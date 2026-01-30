@@ -39,7 +39,7 @@ void AdvVpnGroupModel::addGroupLocally(const QString &groupName)
     for (const auto &group : m_groups) {
         if (group->name().compare(trimmedName, Qt::CaseInsensitive) == 0){
             emit conflictsDetected(
-                {QString("Il gruppo '%1' esiste già.").arg(trimmedName)}
+                {QString("'%1' già presente , impossibile aggiungerlo").arg(trimmedName)}
             );
             return;
         }

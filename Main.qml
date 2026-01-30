@@ -90,7 +90,7 @@ ApplicationWindow {
         onIpUpdated: (oldIp, newIp) => controller.updateIpLocally(oldIp, newIp) }
 
     // Dialog eliminazione IP
-    ConfirmDeleteDialog {
+    ConfirmDeleteIpDialog {
         id: deleteIpDialog
         z: 200
         titleText: "Elimina Indirizzo IP"
@@ -101,8 +101,9 @@ ApplicationWindow {
     }
 
 
+
     // Dialog eliminazione Gruppo
-    ConfirmDeleteDialog {
+    ConfirmDeleteGroupDialog {
         id: deleteGroupDialog
         z: 200
         onConfirmed: {

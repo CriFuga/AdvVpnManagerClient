@@ -5,6 +5,9 @@ import Qt5Compat.GraphicalEffects
 
 Dialog {
     id: control
+    x: (parent.width - width) / 2
+    y: (parent.height - height) / 2
+    parent: Overlay.overlay
 
     enter: Transition {
         NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 200; easing.type: Easing.OutCubic }
@@ -124,6 +127,7 @@ Dialog {
                     contentItem: Text {
                         text: cancelBtn.text
                         color: Theme.textDim
+                        Layout.fillWidth: true
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         font.bold: true

@@ -178,9 +178,8 @@ Item {
                         cursorShape: Qt.PointingHandCursor
 
                         onClicked: {
-                            deleteGroupDialog.titleText = "Elimina Gruppo"
-                            deleteGroupDialog.messageText = "Sei sicuro di voler eliminare il gruppo '" + groupName + "' ? Questa azione rimuoverà anche tutti gli IP associati"
-                            deleteGroupDialog.open()
+                            deleteGroupDialog.groupName = groupName // Assicurati che 'model.name' sia il nome del gruppo
+                            deleteGroupDialog.open();
                         }
                     }
                 }

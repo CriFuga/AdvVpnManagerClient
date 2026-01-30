@@ -124,46 +124,52 @@ ItemDelegate {
         }
 
         // --- TASTO ELIMINA (Hover fluido e Icona nitida) ---
+        // --- TASTO ELIMINA (Sistemato per nitidezza e posizione) ---
         VpnButton {
             id: deleteBtn
-            Layout.preferredWidth: 38
-            Layout.preferredHeight: 38
+            Layout.preferredWidth: 40
+            Layout.preferredHeight: 40
+            Layout.rightMargin: 20 // Spazio vitale dal bordo destro della card
 
-            // Animazione di opacità e leggero spostamento X per fluidità
+            // Animazione fluida
             opacity: delegateRoot.hovered ? 1.0 : 0.0
             scale: delegateRoot.hovered ? 1.0 : 0.8
+            Behavior on opacity { NumberAnimation { duration: 150 } }
+            Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
 
             contentItem: Item {
+                anchors.fill: parent
+
                 Image {
                     id: binIcon
-                    anchors.centerIn: parent
                     source: "qrc:/icons/bin.svg"
+                    // Centratura assoluta e dimensione fissa per evitare sfocature
+                    anchors.centerIn: parent
                     width: 20
                     height: 20
                     fillMode: Image.PreserveAspectFit
-                    mipmap: true // Migliora la nitidezza in Light Mode
+                    mipmap: true // Fondamentale per la nitidezza su schermi High-DPI
                     visible: false
                 }
 
                 ColorOverlay {
                     anchors.fill: binIcon
                     source: binIcon
+                    // Feedback visivo: rosso più acceso quando ci passi sopra
                     color: deleteBtn.hovered ? "#ff4444" : "#ef4444"
                 }
             }
 
             background: Rectangle {
-                color: deleteBtn.hovered ? (Theme.darkMode ? "#22ffffff" : "#11000000") : "transparent"
-                radius: 19
+                // Cerchio di sfondo che appare solo in hover per dare "target" al click
+                color: deleteBtn.hovered ? (Theme.darkMode ? "#22ffffff" : "#10000000") : "transparent"
+                radius: 20
             }
 
             onClicked: {
                 deleteIpDialog.messageText = ipValue
                 deleteIpDialog.open()
             }
-
-            Behavior on opacity { NumberAnimation { duration: 150 } }
-            Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
         }
     }
 }

@@ -39,6 +39,8 @@ qt_add_qml_module(appADVVpnManagerClient
         qml/SyncReviewDialog.qml
         qml/EditIpDialog.qml
         qml/ConfirmDeleteDialog.qml
+        qml/ConfirmDeleteIpDialog.qml
+        qml/ConfirmDeleteGroupDialog.qml
     SOURCES
         advvpnsocket.h advvpnsocket.cpp
         advvpngroupmodel.h advvpngroupmodel.cpp
