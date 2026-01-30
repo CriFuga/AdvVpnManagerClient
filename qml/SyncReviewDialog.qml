@@ -4,6 +4,18 @@ import QtQuick.Layouts 1.15
 
 Dialog {
     id: syncReviewDialog
+
+    enter: Transition {
+        NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 200; easing.type: Easing.OutCubic }
+        NumberAnimation { property: "scale"; from: 0.9; to: 1.0; duration: 200; easing.type: Easing.OutBack }
+    }
+
+    // ANIMAZIONE DI USCITA (Fade out + Scale down)
+    exit: Transition {
+        NumberAnimation { property: "opacity"; from: 1.0; to: 0.0; duration: 150; easing.type: Easing.InCubic }
+        NumberAnimation { property: "scale"; from: 1.0; to: 0.9; duration: 150; easing.type: Easing.InCubic }
+    }
+
     modal: true
     anchors.centerIn: parent
     width: 500
@@ -63,12 +75,20 @@ Dialog {
             spacing: 15
 
             VpnButton {
+                text: "CANCELLA"
+                Layout.fillWidth: true
+                onClicked: {
+                    syncReviewDialog.close();
+                }
+            }
+
+            VpnButton {
                 text: "ANNULLA"
                 Layout.fillWidth: true
                 onClicked: {
-                        controller.discardChanges(); // Chiama la nuova funzione C++
-                        syncReviewDialog.close();
-                    }
+                    controller.discardChanges(); // Chiama la nuova funzione C++
+                    syncReviewDialog.close();
+                }
             }
 
             VpnButton {

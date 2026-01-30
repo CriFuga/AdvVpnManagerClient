@@ -66,8 +66,12 @@ void ClientController::addGroupRequest(const QString &groupName)
                  "Aggiunta nuovo gruppo: " + groupName,
                  data);
 
-    // 3. Aggiorniamo la UI locale immediatamente (Sidebar)
-    // Nota: devi aggiungere questo metodo nel tuo AdvVpnGroupModel
+    // implement signals of conflict detection in the model using the m_groupModel one
+    if (m_groupModel) {
+        connect(m_groupModel, &AdvVpnGroupModel::conflictsDetected,
+                this, &ClientController::errorsOccurred);
+    }
+
     m_groupModel->addGroupLocally(groupName.trimmed());
 }
 
@@ -170,6 +174,7 @@ void ClientController::discardChanges()
         QJsonObject req;
         req["type"] = "FETCH_FULL_STATE"; // Assicurati che il server gestisca questo comando
         socket->sendJson(req);
+        qInfo() << "🔄 Richiesta di sincronizzazione completa inviata al server.";
     }
 
     qInfo() << "♻️ Modifiche locali annullate e coda svuotata.";

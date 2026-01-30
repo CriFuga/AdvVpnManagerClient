@@ -48,7 +48,7 @@ public:
     int pendingChangesCount() const { return m_pendingChanges.size(); }
 
 signals:
-
+    void errorsOccurred(const QStringList &messages);
     void availableCnsChanged();
     void pendingChangesChanged();
 

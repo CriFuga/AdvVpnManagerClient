@@ -37,7 +37,12 @@ void AdvVpnGroupModel::addGroupLocally(const QString &groupName)
 
     // 1. Controllo duplicati locale
     for (const auto &group : m_groups) {
-        if (group->name().compare(trimmedName, Qt::CaseInsensitive) == 0) return;
+        if (group->name().compare(trimmedName, Qt::CaseInsensitive) == 0){
+            emit conflictsDetected(
+                {QString("Il gruppo '%1' esiste già.").arg(trimmedName)}
+            );
+            return;
+        }
     }
 
     // 2. Creazione dell'oggetto con il nome richiesto

@@ -9,9 +9,22 @@ Dialog {
     property string messageText: ""
     signal confirmed()
 
+    enter: Transition {
+        NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 200; easing.type: Easing.OutCubic }
+        NumberAnimation { property: "scale"; from: 0.9; to: 1.0; duration: 200; easing.type: Easing.OutBack }
+    }
+
+    // ANIMAZIONE DI USCITA (Fade out + Scale down)
+    exit: Transition {
+        NumberAnimation { property: "opacity"; from: 1.0; to: 0.0; duration: 150; easing.type: Easing.InCubic }
+        NumberAnimation { property: "scale"; from: 1.0; to: 0.9; duration: 150; easing.type: Easing.InCubic }
+    }
+
     anchors.centerIn: parent
     modal: true
     padding: 0
+    header: null
+    footer: null
 
     // Dimensioni fisse per rompere il binding loop
     implicitWidth: 420
@@ -25,7 +38,7 @@ Dialog {
         layer.enabled: true
         layer.effect: DropShadow {
             transparentBorder: true
-            color: "#60000000"
+            color: Theme.darkMode ? "#60000000" : "#20000000" // Ombra più leggera in light mode
             radius: 20
         }
     }
@@ -42,7 +55,7 @@ Dialog {
 
             Rectangle {
                 width: 36; height: 36; radius: 18
-                color: "#fef2f2"
+                color: "#fef2f2" // Sfondo rosso chiarissimo per l'icona
                 Text {
                     anchors.centerIn: parent
                     text: "!"
@@ -54,21 +67,22 @@ Dialog {
 
             Label {
                 text: control.titleText
-                color: Theme.darkMode ? "#ffffff" : "#1e293b"
+                color: Theme.darkMode ? "#ffffff" : "#1e293b" // Blu notte profondo per light mode
                 font.bold: true
                 font.pixelSize: 20
             }
         }
 
-        // Testo dell'IP centrato e stilizzato
+        // Testo del messaggio centrato
         Label {
             text: control.messageText
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignHCenter
-            color: Theme.darkMode ? "#94a3b8" : "#64748b"
+            // Colore più scuro in light mode per leggibilità
+            color: Theme.darkMode ? "#94a3b8" : "#334155"
             font.pixelSize: 16
-            //font.family: "Monospace" // Rende l'IP più leggibile
             wrapMode: Text.WordWrap
+            lineHeight: 1.2
         }
 
         // Bottoni compatti e centrati
@@ -77,9 +91,27 @@ Dialog {
             spacing: 15
 
             VpnButton {
+                id: cancelBtn
                 text: "Annulla"
                 Layout.preferredWidth: 100
                 Layout.preferredHeight: 38
+
+                contentItem: Text {
+                    text: cancelBtn.text
+                    // Grigio scuro/Blu in light mode, bianco in dark
+                    color: Theme.darkMode ? "#ffffff" : "#475569"
+                    font.bold: true
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+
+                background: Rectangle {
+                    color: "transparent"
+                    radius: 10
+                    border.color: Theme.darkMode ? "#333a4d" : "#cbd5e1"
+                    border.width: 1
+                }
+
                 onClicked: control.close()
             }
 
@@ -88,7 +120,7 @@ Dialog {
                 text: "Elimina"
                 Layout.preferredWidth: 100
                 Layout.preferredHeight: 38
-                // Stile rosso per il tasto Elimina
+
                 contentItem: Text {
                     text: delBtn.text
                     color: "white"
@@ -96,10 +128,13 @@ Dialog {
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                 }
+
                 background: Rectangle {
+                    // Gradiente di rosso: più scuro se premuto
                     color: delBtn.pressed ? "#b91c1c" : "#ef4444"
                     radius: 10
                 }
+
                 onClicked: {
                     control.confirmed()
                     control.close()

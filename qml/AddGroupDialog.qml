@@ -5,48 +5,79 @@ import Qt5Compat.GraphicalEffects
 
 Dialog {
     id: control
+
+    enter: Transition {
+        NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 200; easing.type: Easing.OutCubic }
+        NumberAnimation { property: "scale"; from: 0.9; to: 1.0; duration: 200; easing.type: Easing.OutBack }
+    }
+
+    // ANIMAZIONE DI USCITA (Fade out + Scale down)
+    exit: Transition {
+        NumberAnimation { property: "opacity"; from: 1.0; to: 0.0; duration: 150; easing.type: Easing.InCubic }
+        NumberAnimation { property: "scale"; from: 1.0; to: 0.9; duration: 150; easing.type: Easing.InCubic }
+    }
+
+    anchors.centerIn: parent
     modal: true
     focus: true
 
-    // Rimuoviamo i margini e l'header di default di Qt
     padding: 0
     header: null
     footer: null
 
     signal groupAdded(string name)
 
-    // Sfondo e Contenitore Principale
-    background: Rectangle {
-        implicitWidth: 350
-        implicitHeight: 250
-        radius: 16
-        color: Theme.panel // Colore del pannello dal tuo ThemeManager
+    // Funzione centralizzata per l'invio
+    function submit() {
+        let name = groupNameInput.text.trim()
+        if (name.length > 0) {
+            control.groupAdded(name)
+            groupNameInput.clear()
+            control.close()
+        }
+    }
 
-        // Bordo sottile per dare definizione
+    background: Rectangle {
+        implicitWidth: 380
+        implicitHeight: 280
+        radius: 20
+        color: Theme.panel
         border.color: Theme.border
         border.width: 1
 
+        // Ombra per staccare dal background
+        layer.enabled: true
+        layer.effect: DropShadow {
+            transparentBorder: true
+            color: "#40000000"
+            radius: 20
+        }
+
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 25
-            spacing: 15
+            anchors.margins: 30
+            spacing: 20
 
-            // TITOLO
+            // HEADER CENTRATO
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 4
+                spacing: 8
+
                 Text {
                     text: "Crea Nuovo Gruppo"
                     color: Theme.textMain
-                    font.pixelSize: 20
+                    font.pixelSize: 22
                     font.bold: true
-                    Layout.alignment: Qt.AlignHCenter
+                    Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignHCenter
                 }
+
                 Text {
                     text: "Assegna un nome univoco al gruppo"
                     color: Theme.textDim
-                    font.pixelSize: 13
-                    Layout.alignment: Qt.AlignHCenter
+                    font.pixelSize: 14
+                    Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignHCenter
                 }
             }
 
@@ -54,31 +85,40 @@ Dialog {
             TextField {
                 id: groupNameInput
                 Layout.fillWidth: true
-                Layout.preferredHeight: 45
+                Layout.preferredHeight: 48
                 placeholderText: "Es: Server Web"
                 color: Theme.textMain
+                font.pixelSize: 15
+                horizontalAlignment: Text.AlignHCenter
                 focus: true
 
                 background: Rectangle {
                     color: Theme.background
-                    radius: 8
+                    radius: 10
                     border.color: groupNameInput.activeFocus ? Theme.accent : Theme.border
                     border.width: groupNameInput.activeFocus ? 2 : 1
                 }
+
+                Keys.onPressed: (event) => {
+                                    if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return) {
+                                        control.submit()
+                                        event.accepted = true
+                                    }
+                                }
             }
 
-            Item { Layout.fillHeight: true } // Spaziatore
+            Item { Layout.fillHeight: true }
 
-            // BOTTONI (Ora dentro il Rectangle bianco)
+            // BOTTONI
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 12
+                spacing: 15
 
-                Button {
+                VpnButton {
                     id: cancelBtn
                     text: "Annulla"
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 40
+                    Layout.preferredHeight: 42
                     onClicked: control.close()
 
                     contentItem: Text {
@@ -90,28 +130,23 @@ Dialog {
                     }
 
                     background: Rectangle {
-                        color: cancelBtn.hovered ? "#15ffffff" : "transparent"
-                        radius: 8
+                        color: cancelBtn.hovered ? (Theme.darkMode ? "#15ffffff" : "#08000000") : "transparent"
+                        radius: 10
                         border.color: Theme.border
                     }
                 }
 
-                Button {
+                VpnButton {
                     id: confirmBtn
                     text: "Crea"
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 40
+                    Layout.preferredHeight: 42
                     enabled: groupNameInput.text.trim().length > 0
-
-                    onClicked: {
-                        control.groupAdded(groupNameInput.text.trim())
-                        groupNameInput.clear()
-                        control.close()
-                    }
+                    onClicked: control.submit()
 
                     background: Rectangle {
-                        color: confirmBtn.enabled ? (confirmBtn.hovered ? "#2563eb" : Theme.accent) : "#334155"
-                        radius: 8
+                        color: confirmBtn.enabled ? (confirmBtn.hovered ? Qt.darker(Theme.accent, 1.1) : Theme.accent) : "#334155"
+                        radius: 10
                     }
 
                     contentItem: Text {
@@ -126,7 +161,6 @@ Dialog {
         }
     }
 
-    // Reset del campo quando il dialog si apre
     onOpened: {
         groupNameInput.forceActiveFocus()
     }

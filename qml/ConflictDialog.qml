@@ -5,6 +5,7 @@ import Qt5Compat.GraphicalEffects // O QtGraphicalEffects se Qt 5
 
 Rectangle {
     id: root
+
     anchors.fill: parent
     color: "#CC000000" // Overlay di sfondo più scuro per risaltare il popup
     visible: messages && messages.length > 0

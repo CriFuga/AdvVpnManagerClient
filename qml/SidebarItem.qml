@@ -45,7 +45,7 @@ Item {
         // LOGICA COLORE AGGIORNATA
         color: {
             // Se il gruppo non ha ancora un ID o è appena stato creato localmente
-            if (isModified || groupName === tempName) return "#065f46";
+            if (isModified /*|| groupName === tempName*/) return "#065f46";
             if (isSelected) return "#1F3A5F";
             return "transparent";
         }

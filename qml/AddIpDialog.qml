@@ -5,68 +5,107 @@ import Qt5Compat.GraphicalEffects
 
 Dialog {
     id: control
+
+    enter: Transition {
+        NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 200; easing.type: Easing.OutCubic }
+        NumberAnimation { property: "scale"; from: 0.9; to: 1.0; duration: 200; easing.type: Easing.OutBack }
+    }
+
+    // ANIMAZIONE DI USCITA (Fade out + Scale down)
+    exit: Transition {
+        NumberAnimation { property: "opacity"; from: 1.0; to: 0.0; duration: 150; easing.type: Easing.InCubic }
+        NumberAnimation { property: "scale"; from: 1.0; to: 0.9; duration: 150; easing.type: Easing.InCubic }
+    }
+
+    anchors.centerIn: parent
     modal: true
     focus: true
-
     padding: 0
     header: null
     footer: null
 
     signal ipAdded(string ip)
 
+    // Funzione centralizzata per l'invio (Invio e Clic)
+    function submitIp() {
+        if (ipInput.acceptableInput) {
+            control.ipAdded(ipInput.text.trim())
+            ipInput.clear()
+            control.close()
+        }
+    }
+
     background: Rectangle {
-        implicitWidth: 350
-        implicitHeight: 250
-        radius: 16
+        implicitWidth: 380
+        implicitHeight: 280
+        radius: 20
         color: Theme.panel
         border.color: Theme.border
         border.width: 1
 
+        // Ombra morbida per dare profondità
+        layer.enabled: true
+        layer.effect: DropShadow {
+            transparentBorder: true
+            color: "#40000000"
+            radius: 20
+        }
+
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 25
-            spacing: 15
+            anchors.margins: 30
+            spacing: 20
 
-            // TITOLO E SOTTOTITOLO
+            // HEADER CENTRATO
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 4
+                spacing: 8
+
                 Text {
                     text: "Aggiungi Nuovo IP"
                     color: Theme.textMain
-                    font.pixelSize: 20
+                    font.pixelSize: 22
                     font.bold: true
-                    Layout.alignment: Qt.AlignHCenter
+                    Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignHCenter // Centratura reale
                 }
+
                 Text {
                     text: "Inserisci l'indirizzo IPv4 per questo gruppo"
                     color: Theme.textDim
-                    font.pixelSize: 13
-                    Layout.alignment: Qt.AlignHCenter
+                    font.pixelSize: 14
+                    Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignHCenter // Centratura reale
                 }
             }
 
-            // CAMPO DI INPUT IP
+            // CAMPO INPUT IP
             TextField {
                 id: ipInput
                 Layout.fillWidth: true
-                Layout.preferredHeight: 45
+                Layout.preferredHeight: 48
                 placeholderText: "Es: 10.128.2.1"
                 color: Theme.textMain
-                focus: true
+                font.pixelSize: 15
+                horizontalAlignment: Text.AlignHCenter
 
-                // Filtro base per accettare solo numeri e punti
-                inputMethodHints: Qt.ImhDigitsOnly
                 validator: RegularExpressionValidator {
                     regularExpression: /^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}$/
                 }
 
                 background: Rectangle {
                     color: Theme.background
-                    radius: 8
+                    radius: 10
                     border.color: ipInput.activeFocus ? Theme.accent : Theme.border
                     border.width: ipInput.activeFocus ? 2 : 1
                 }
+
+                Keys.onPressed: (event) => {
+                                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                                        control.submitIp()
+                                        event.accepted = true
+                                    }
+                                }
             }
 
             Item { Layout.fillHeight: true }
@@ -74,56 +113,23 @@ Dialog {
             // BOTTONI
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 12
+                spacing: 15
 
-                Button {
+                VpnButton {
                     id: cancelBtn
                     text: "Annulla"
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 40
+                    Layout.preferredHeight: 42
                     onClicked: control.close()
-
-                    contentItem: Text {
-                        text: cancelBtn.text
-                        color: Theme.textDim
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                        font.bold: true
-                    }
-
-                    background: Rectangle {
-                        color: cancelBtn.hovered ? "#15ffffff" : "transparent"
-                        radius: 8
-                        border.color: Theme.border
-                    }
                 }
 
-                Button {
+                VpnButton {
                     id: confirmBtn
                     text: "Aggiungi"
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 40
-                    // Il tasto è attivo solo se l'input è un IP valido
+                    Layout.preferredHeight: 42
                     enabled: ipInput.acceptableInput
-
-                    onClicked: {
-                        control.ipAdded(ipInput.text.trim())
-                        ipInput.clear()
-                        control.close()
-                    }
-
-                    background: Rectangle {
-                        color: confirmBtn.enabled ? (confirmBtn.hovered ? "#2563eb" : Theme.accent) : "#334155"
-                        radius: 8
-                    }
-
-                    contentItem: Text {
-                        text: confirmBtn.text
-                        color: "white"
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                        font.bold: true
-                    }
+                    onClicked: control.submitIp()
                 }
             }
         }

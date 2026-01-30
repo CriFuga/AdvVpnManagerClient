@@ -56,6 +56,7 @@ ApplicationWindow {
 
     Connections {
         target: controller
+
         function onPendingChangesChanged() {
             let changes = controller.pendingChanges
             if (changes.length > 0) {
@@ -65,12 +66,28 @@ ApplicationWindow {
                 toastTimer.restart()
             }
         }
+        function onErrorsOccurred(errorMessage) {
+            globalToast.text = errorMessage
+            globalToast.showRequested = true
+            toastTimer.restart()
+        }
     }
 
     // --- 4. DIALOGS ---
-    AddGroupDialog { id: addGroupDialog; z: 200; onGroupAdded: (name) => controller.addGroupRequest(name) }
-    AddIpDialog { id: addIpDialog; z: 200; onIpAdded: (ip) => controller.addIpRequest(itemModel.currentGroupName(), ip) }
-    EditIpDialog { id: editIpDialog; z: 200; onIpUpdated: (oldIp, newIp) => controller.updateIpLocally(oldIp, newIp) }
+    AddGroupDialog {
+        id: addGroupDialog;
+        z: 200;
+        onGroupAdded: (name) => controller.addGroupRequest(name)
+    }
+    AddIpDialog {
+        id: addIpDialog;
+        z: 200;
+        onIpAdded: (ip) => controller.addIpRequest(itemModel.currentGroupName(), ip)
+    }
+    EditIpDialog {
+        id: editIpDialog;
+        z: 200;
+        onIpUpdated: (oldIp, newIp) => controller.updateIpLocally(oldIp, newIp) }
 
     // Dialog eliminazione IP
     ConfirmDeleteDialog {
@@ -138,9 +155,17 @@ ApplicationWindow {
                     visible: mainSidebar.currentIndex === -1
                 }
 
+
+                PopupToast {
+                    id: globalToast
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    z: 999
+                }
+
                 Item {
                     anchors.fill: parent
                     visible: mainSidebar.currentIndex !== -1
+
 
                     ListView {
                         id: itemListView
@@ -155,12 +180,6 @@ ApplicationWindow {
                             cn: model.cn
                             onClicked: itemListView.currentIndex = index
                         }
-                    }
-
-                    PopupToast {
-                        id: globalToast
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        z: 999
                     }
 
                     RowLayout {
