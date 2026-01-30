@@ -1,0 +1,17 @@
+<RCC>
+    <qresource prefix="/">
+        <file>icons/cloud_alert.svg</file>
+        <file>icons/cloud_off.svg</file>
+        <file>icons/cloud_on.svg</file>
+        <file>icons/dark_mode.svg</file>
+        <file>icons/group.svg</file>
+        <file>icons/light_mode.svg</file>
+        <file>icons/warning.svg</file>
+        <file>icons/info.svg</file>
+        <file>icons/search.svg</file>
+        <file>icons/bin.svg</file>
+        <file>icons/check.svg</file>
+        <file>icons/edit.svg</file>
+        <file>icons/add.svg</file>
+    </qresource>
+</RCC>
