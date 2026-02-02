@@ -7,169 +7,203 @@ ItemDelegate {
     id: delegateRoot
     height: 85
     width: parent ? parent.width : 0
-
     property string cn: ""
     property string ipValue: ""
-    property bool isEditing: false
 
-    signal setCn(string ip, string newCn)
+    onClicked: {
+        delegateRoot.ListView.view.currentIndex = index
+        delegateRoot.forceActiveFocus()
+    }
 
     background: Rectangle {
         radius: 12
         color: Theme.cardBackground
-        border.color: delegateRoot.hovered ? Theme.accent : Theme.border
-        border.width: 1
-
-        // Transizione fluida per il bordo al passaggio del mouse
-        Behavior on border.color { ColorAnimation { duration: 150 } }
+        border.color: (delegateRoot.ListView.isCurrentItem || delegateRoot.hovered)
+                      ? Theme.accent : Theme.border
+        border.width: delegateRoot.ListView.isCurrentItem ? 2 : 1
     }
 
     contentItem: RowLayout {
         anchors.fill: parent
         anchors.leftMargin: 20
-        anchors.rightMargin: 15
+        anchors.rightMargin: 20 // Aumentato per staccare i bottoni dal bordo
         spacing: 20
 
-        // --- ICONA STATO IP ---
+        // --- 1. ICONA IP (Fissa a sinistra) ---
         Rectangle {
             width: 44; height: 44; radius: 22
-            color: cn !== "" ? (Theme.darkMode ? "#064e3b" : "#d1fae5")
-                             : (Theme.darkMode ? "#1e293b" : "#f1f5f9")
-
-            border.color: cn !== "" ? "#10b981" : (Theme.darkMode ? "#3b82f6" : "#cbd5e1")
+            color: cn !== "" ? (Theme.darkMode ? "#064e3b" : "#d1fae5") : (Theme.darkMode ? "#1e293b" : "#f1f5f9")
+            border.color: cn !== "" ? "#10b981" : Theme.border
             border.width: 2
             Layout.alignment: Qt.AlignVCenter
 
             Text {
                 anchors.centerIn: parent
                 text: "IP"
-                font.bold: true
-                font.pixelSize: 13
-                color: cn !== "" ? "#10b981" : (Theme.darkMode ? "#3b82f6" : "#64748b")
+                font.bold: true; font.pixelSize: 13
+                color: cn !== "" ? "#10b981" : Theme.textDim
             }
         }
 
-        // --- AREA TESTI ---
+        // --- 2. AREA TESTI (Prende tutto lo spazio centrale) ---
         ColumnLayout {
-            Layout.fillWidth: true
-            spacing: 4
+            Layout.fillWidth: true // Fondamentale per spingere i bottoni a destra
             Layout.alignment: Qt.AlignVCenter
+            spacing: 4
 
             Label {
                 text: ipValue
-                color: Theme.darkMode ? "#f8fafc" : "#1e293b"
-                font.bold: true
-                font.pixelSize: 17
-                Layout.fillWidth: true
+                color: Theme.textMain
+                font.bold: true; font.pixelSize: 16
             }
 
+            // Container per CN o TextField
             Item {
-                id: cnContainer
                 Layout.fillWidth: true
-                Layout.preferredHeight: 32
+                Layout.preferredHeight: 30
 
-                // Visualizzazione CN
-                Label {
-                    visible: !isEditing && cn !== ""
-                    anchors.fill: parent
-                    text: "✓ " + cn
-                    color: Theme.darkMode ? "#10b981" : "#059669"
-                    font.pixelSize: 14
-                    font.weight: Font.Medium
-                    verticalAlignment: Text.AlignVCenter
-                    elide: Text.ElideRight
+                // Stato Assegnato: ✓ nome_certificato
+                RowLayout {
+                    anchors.left: parent.left // Forza l'allineamento a sinistra
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: cn !== ""
+                    spacing: 6
 
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: isEditing = true
+                    Text {
+                        text: "✓"
+                        color: "#10b981"
+                        font.pixelSize: 12
+                    }
+                    Label {
+                        text: cn
+                        color: Theme.darkMode ? "#10b981" : "#059669"
+                        font.pixelSize: 13; font.weight: Font.Medium
+                        elide: Text.ElideRight
                     }
                 }
 
-                // Campo CN (Larghezza limitata per estetica)
+                // Stato Vuoto: Campo input
                 AutoSuggestField {
-                    id: suggestField
-                    visible: isEditing || cn === ""
-
-                    // Limitiamo la larghezza del campo CN al 60% dell'area disponibile
-                    width: Math.min(parent.width * 0.6, 300)
-                    height: parent.height
-
-                    suggestions: controller.availableCertificates || []
-                    placeholderText: "Assegna CN..."
-                    text: isEditing ? cn : ""
-
-                    onVisibleChanged: {
-                        if (visible && isEditing) forceActiveFocus()
-                    }
-
-                    onAccepted: {
-                        delegateRoot.setCn(ipValue, text)
-                        isEditing = false
-                    }
-
-                    onActiveFocusChanged: {
-                        if (!activeFocus && !popupOpened) isEditing = false
-                    }
-
-                    background: Rectangle {
-                        // Colore dinamico per il campo di testo
-                        color: Theme.darkMode ? "#0f172a" : "#f1f5f9"
-                        radius: 6
-                        border.color: suggestField.activeFocus ? Theme.accent : (Theme.darkMode ? "#334155" : "#cbd5e1")
-                        border.width: 1
+                    width: 250               // Larghezza fissa in pixel
+                    Layout.preferredWidth: 200 // Larghezza preferita nel layout
+                    visible: cn === ""
+                    placeholderText: "Assegna ID..."
+                    font.pixelSize: 12
+                    suggestions: controller.availableCns
+                    onSuggestionPicked: (val) => {
+                        assignCnDialog.ipTarget = ipValue
+                        assignCnDialog.cnValue = val
+                        assignCnDialog.open()
                     }
                 }
             }
         }
 
-        // --- TASTO ELIMINA (Hover fluido e Icona nitida) ---
-        // --- TASTO ELIMINA (Sistemato per nitidezza e posizione) ---
-        VpnButton {
-            id: deleteBtn
-            Layout.preferredWidth: 40
-            Layout.preferredHeight: 40
-            Layout.rightMargin: 20 // Spazio vitale dal bordo destro della card
+        // --- 3. BOTTONI (Fissi a destra) ---
+        RowLayout {
+                    id: actionButtons
+                    spacing: 8
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.rightMargin: 15
 
-            // Animazione fluida
-            opacity: delegateRoot.hovered ? 1.0 : 0.0
-            scale: delegateRoot.hovered ? 1.0 : 0.8
-            Behavior on opacity { NumberAnimation { duration: 150 } }
-            Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+                    // Definiamo una proprietà di stato per l'animazione
+                    property bool isShown: delegateRoot.hovered || delegateRoot.ListView.isCurrentItem
 
-            contentItem: Item {
-                anchors.fill: parent
+                    // Applichiamo l'opacità e la trasformazione basandoci sullo stato
+                    opacity: isShown ? 1.0 : 0.0
 
-                Image {
-                    id: binIcon
-                    source: "qrc:/icons/bin.svg"
-                    // Centratura assoluta e dimensione fissa per evitare sfocature
-                    anchors.centerIn: parent
-                    width: 20
-                    height: 20
-                    fillMode: Image.PreserveAspectFit
-                    mipmap: true // Fondamentale per la nitidezza su schermi High-DPI
-                    visible: false
+                    transform: Translate {
+                        // Usiamo un'espressione condizionale diretta qui
+                        x: actionButtons.isShown ? 0 : 20
+
+                        Behavior on x {
+                            NumberAnimation { duration: 250; easing.type: Easing.OutBack }
+                        }
+                    }
+
+                    Behavior on opacity {
+                        NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
+                    }
+
+                    // BOTTONE EDIT (MATITA)
+                    VpnButton {
+                        id: editBtn
+                        Layout.preferredWidth: 34
+                        Layout.preferredHeight: 34
+
+                        // Spostiamo qui tutta la preparazione dei dati
+                        onClicked: {
+                            // 1. Selezioniamo l'item nella lista
+                            delegateRoot.ListView.view.currentIndex = index
+
+                            // 2. Prepariamo i dati per il Dialog unificato
+                            editItemDialog.oldIp = ipValue
+                            editItemDialog.newIpText = ipValue
+                            editItemDialog.oldCn = cn
+                            editItemDialog.newCnText = cn
+
+                            // 3. Apriamo il Dialog
+                            editItemDialog.open()
+                        }
+
+                        background: Rectangle {
+                            color: editBtn.hovered ? (Theme.darkMode ? "#223b82f6" : "#e0e7ff") : "transparent"
+                            radius: 17
+                        }
+
+                        contentItem: Item {
+                            anchors.fill: parent
+                            Image {
+                                id: editIcon
+                                source: "qrc:/icons/edit.svg"
+                                anchors.centerIn: parent
+                                width: 16; height: 16
+                                fillMode: Image.PreserveAspectFit
+                                sourceSize: Qt.size(16, 16)
+                                visible: false
+                            }
+                            ColorOverlay {
+                                anchors.fill: editIcon
+                                source: editIcon
+                                color: editBtn.hovered ? Theme.accent : Theme.textDim
+                            }
+                        }
+                    }
+
+                    // BOTTONE ELIMINA (CESTINO)
+                    VpnButton {
+                        id: deleteBtn
+                        Layout.preferredWidth: 34
+                        Layout.preferredHeight: 34
+                        onClicked: {
+                            deleteIpDialog.messageText = ipValue
+                            deleteIpDialog.open()
+                        }
+
+                        background: Rectangle {
+                            color: deleteBtn.hovered ? (Theme.darkMode ? "#22ff4444" : "#fee2e2") : "transparent"
+                            radius: 17
+                        }
+
+                        contentItem: Item {
+                            anchors.fill: parent
+                            Image {
+                                id: binIcon
+                                source: "qrc:/icons/bin.svg"
+                                anchors.centerIn: parent
+                                width: 16; height: 16
+                                fillMode: Image.PreserveAspectFit
+                                sourceSize.width: 16
+                                sourceSize.height: 16
+                                visible: false
+                            }
+                            ColorOverlay {
+                                anchors.fill: binIcon
+                                source: binIcon
+                                color: deleteBtn.hovered ? "#ef4444" : Theme.textDim
+                            }
+                        }
+                    }
                 }
-
-                ColorOverlay {
-                    anchors.fill: binIcon
-                    source: binIcon
-                    // Feedback visivo: rosso più acceso quando ci passi sopra
-                    color: deleteBtn.hovered ? "#ff4444" : "#ef4444"
-                }
-            }
-
-            background: Rectangle {
-                // Cerchio di sfondo che appare solo in hover per dare "target" al click
-                color: deleteBtn.hovered ? (Theme.darkMode ? "#22ffffff" : "#10000000") : "transparent"
-                radius: 20
-            }
-
-            onClicked: {
-                deleteIpDialog.messageText = ipValue
-                deleteIpDialog.open()
-            }
-        }
     }
 }

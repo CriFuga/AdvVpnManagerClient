@@ -23,6 +23,15 @@ Rectangle {
         onGroupAdded: (name) => controller.addGroupRequest(name)
     }
 
+    EditGroupDialog {
+            id: editGroupDialog
+            onGroupRenamed: (oldName, newName) => {
+                controller.renameGroupRequest(oldName, newName);
+                // Esci dalla modalità editing dopo il salvataggio per pulizia
+                root.isEditing = false
+            }
+        }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0

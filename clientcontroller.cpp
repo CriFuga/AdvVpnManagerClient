@@ -202,6 +202,7 @@ void ClientController::requestRemoveIp(const QString &groupName, const QString &
                  data);
 }
 
+
 void ClientController::recordChange(const QString &type, const QString &desc, const QVariantMap &data) {
 
     PendingChange change = {type, desc, data};

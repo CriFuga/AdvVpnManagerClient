@@ -6,18 +6,45 @@ TextField {
     id: control
 
     property var suggestions: []
-    property alias popupOpened: popup.visible // Permette al Delegate di vedere se è aperto
+    property alias popupOpened: popup.visible
     property alias listModel: suggestModel
+
+    // Segnale per notificare la selezione definitiva
+    signal suggestionPicked(string value)
 
     color: Theme.textMain
     placeholderTextColor: Theme.textDim
-    font.pixelSize: 13
+    font.pixelSize: 12
     leftPadding: 10
-    rightPadding: clearButton.visible ? 30 : 10
+    rightPadding: clearButton.visible ? 35 : 10
     selectByMouse: true
     selectionColor: Theme.accent
 
-    // Gestione tastiera
+    // --- LOGICA DI FILTRAGGIO ---
+    onTextChanged: {
+        suggestModel.clear()
+        let list = Array.from(suggestions || [])
+
+        // Filtriamo i suggerimenti in base all'input
+        if (list.length > 0 && text.length > 0 && activeFocus) {
+            var found = false
+            let input = text.toLowerCase()
+
+            for (var i = 0; i < list.length; i++) {
+                let val = String(list[i])
+                if (val.toLowerCase().includes(input)) {
+                    suggestModel.append({ "value": val })
+                    found = true
+                }
+            }
+            popup.visible = found
+            if (found) suggestList.currentIndex = 0
+        } else {
+            popup.visible = false
+        }
+    }
+
+    // --- GESTIONE TASTIERA ---
     Keys.onPressed: (event) => {
                         if (popup.visible) {
                             if (event.key === Qt.Key_Down) {
@@ -28,9 +55,16 @@ TextField {
                                 event.accepted = true
                             } else if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return) {
                                 if (suggestList.currentIndex !== -1) {
-                                    control.text = suggestModel.get(suggestList.currentIndex).value
+                                    let val = suggestModel.get(suggestList.currentIndex).value
+
+                                    // FIX: Sincronizziamo il testo del campo con la scelta prima di procedere
+                                    control.text = val
+                                    control.suggestionPicked(val)
                                     popup.close()
                                 }
+                                event.accepted = true
+                            } else if (event.key === Qt.Key_Escape) {
+                                popup.close()
                                 event.accepted = true
                             }
                         }
@@ -42,12 +76,11 @@ TextField {
         border.color: control.activeFocus ? Theme.accent : Theme.border
         border.width: 1
 
-        // La "X" (Corretta)
         Item {
             id: clearButton
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            width: 28; height: 28
+            width: 30; height: 30
             visible: control.text.length > 0
 
             Text {
@@ -62,7 +95,6 @@ TextField {
                 id: mouseXClear
                 anchors.fill: parent
                 hoverEnabled: true
-                // Blocco fondamentale per far funzionare il click nei Popup/TextField
                 onPressed: (mouse) => mouse.accepted = true
                 onReleased: (mouse) => {
                                 if (containsMouse) {
@@ -77,88 +109,76 @@ TextField {
 
     ListModel { id: suggestModel }
 
-    onTextChanged: {
-        suggestModel.clear()
-        // Controllo di sicurezza: suggestions deve esistere ed essere un array
-        if (suggestions && text.length > 0 && activeFocus) {
-            var found = false
-            for (var i = 0; i < suggestions.length; i++) { // Ciclo for classico più sicuro
-                var s = suggestions[i]
-                if (s && s.toLowerCase().includes(text.toLowerCase())) {
-                    suggestModel.append({ "value": s })
-                    found = true
-                }
-            }
-            popup.visible = found
-            if (found) suggestList.currentIndex = 0
-        } else {
-            popup.visible = false
-        }
-    }
-
+    // --- POPUP SUGGERIMENTI ---
     Popup {
         id: popup
-        y: control.height + 4
+        parent: Overlay.overlay
+
+        function updatePosition() {
+            var globalPos = control.mapToItem(null, 0, 0)
+            popup.x = globalPos.x
+            popup.y = globalPos.y + control.height + 2
+        }
+
+        onAboutToShow: updatePosition()
         width: control.width
+
         padding: 0
         focus: false
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-        // Animazioni più veloci e sobrie
-        enter: Transition {
-            NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 150 }
-            NumberAnimation { property: "y"; from: control.height; to: control.height + 4; duration: 150; easing.type: Easing.OutCubic }
-        }
-
-        exit: Transition {
-            NumberAnimation { property: "opacity"; from: 1.0; to: 0.0; duration: 100 }
-            NumberAnimation { property: "y"; from: control.height + 4; to: control.height + 8; duration: 100 }
-        }
 
         background: Rectangle {
             radius: 8
             color: Theme.panel
             border.color: Theme.border
-            // Ombra quasi impercettibile, molto più elegante
             layer.enabled: true
             layer.effect: DropShadow {
                 transparentBorder: true
-                color: "#20000000"
-                radius: 8
-                samples: 12
+                color: "#60000000"
+                radius: 15
+                verticalOffset: 4
             }
         }
 
         contentItem: ListView {
             id: suggestList
-            implicitHeight: Math.min(count * 32, 160)
+            // ALTEZZA FIX: Massimo 5 elementi, poi scroll
+            implicitHeight: Math.min(count * 34, 170)
             model: suggestModel
             clip: true
+            boundsBehavior: Flickable.StopAtBounds
+
+            ScrollBar.vertical: ScrollBar {
+                width: 4
+                policy: parent.contentHeight > parent.height ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
+            }
 
             delegate: ItemDelegate {
-                width: control.width
-                height: 32
+                width: popup.width
+                height: 34
                 highlighted: ListView.isCurrentItem
 
                 contentItem: Text {
                     text: model.value
-                    color: highlighted ? Theme.textMain : Theme.textMain
+                    color: Theme.textMain
                     font.pixelSize: 12
                     verticalAlignment: Text.AlignVCenter
-                    leftPadding: 10
+                    leftPadding: 12
                     elide: Text.ElideRight
                 }
 
                 background: Rectangle {
-                    // Selezione discreta (grigio chiaro invece di blu elettrico)
                     color: highlighted ? (Theme.darkMode ? "#2d3748" : "#f1f5f9") : "transparent"
-                    radius: 4
+                    radius: 6
                     anchors.fill: parent
                     anchors.margins: 2
                 }
 
                 onClicked: {
-                    control.text = model.value
+                    let val = model.value
+                    // FIX: Sincronizziamo il testo anche al click
+                    control.text = val
+                    control.suggestionPicked(val)
                     popup.close()
                 }
             }
