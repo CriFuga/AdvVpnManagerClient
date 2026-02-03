@@ -9,7 +9,6 @@ TextField {
     property alias popupOpened: popup.visible
     property alias listModel: suggestModel
 
-    // Segnale per notificare la selezione definitiva
     signal suggestionPicked(string value)
 
     color: Theme.textMain
@@ -20,12 +19,10 @@ TextField {
     selectByMouse: true
     selectionColor: Theme.accent
 
-    // --- LOGICA DI FILTRAGGIO ---
     onTextChanged: {
         suggestModel.clear()
         let list = Array.from(suggestions || [])
 
-        // Filtriamo i suggerimenti in base all'input
         if (list.length > 0 && text.length > 0 && activeFocus) {
             var found = false
             let input = text.toLowerCase()
@@ -44,7 +41,6 @@ TextField {
         }
     }
 
-    // --- GESTIONE TASTIERA ---
     Keys.onPressed: (event) => {
                         if (popup.visible) {
                             if (event.key === Qt.Key_Down) {
@@ -56,8 +52,6 @@ TextField {
                             } else if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return) {
                                 if (suggestList.currentIndex !== -1) {
                                     let val = suggestModel.get(suggestList.currentIndex).value
-
-                                    // FIX: Sincronizziamo il testo del campo con la scelta prima di procedere
                                     control.text = val
                                     control.suggestionPicked(val)
                                     popup.close()
@@ -109,7 +103,6 @@ TextField {
 
     ListModel { id: suggestModel }
 
-    // --- POPUP SUGGERIMENTI ---
     Popup {
         id: popup
         parent: Overlay.overlay
@@ -125,7 +118,7 @@ TextField {
 
         padding: 0
         focus: false
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        closePolicy: Popup.CloseOnEscape
 
         background: Rectangle {
             radius: 8
@@ -142,7 +135,6 @@ TextField {
 
         contentItem: ListView {
             id: suggestList
-            // ALTEZZA FIX: Massimo 5 elementi, poi scroll
             implicitHeight: Math.min(count * 34, 170)
             model: suggestModel
             clip: true
@@ -176,7 +168,6 @@ TextField {
 
                 onClicked: {
                     let val = model.value
-                    // FIX: Sincronizziamo il testo anche al click
                     control.text = val
                     control.suggestionPicked(val)
                     popup.close()

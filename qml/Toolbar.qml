@@ -49,7 +49,6 @@ Rectangle {
 
         Item { Layout.fillWidth: true }
 
-        // Main Area
         RowLayout {
             spacing: 15
             Layout.alignment: Qt.AlignVCenter
@@ -74,7 +73,6 @@ Rectangle {
                         sourceSize: Qt.size(22, 22)
                         antialiasing: true
 
-                        // Animazione di rotazione al cambio tema
                         rotation: Theme.darkMode ? 180 : 0
                         Behavior on rotation {
                             NumberAnimation { duration: 600; easing.type: Easing.OutBack }

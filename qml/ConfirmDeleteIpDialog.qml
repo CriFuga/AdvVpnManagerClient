@@ -2,7 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import Qt5Compat.GraphicalEffects
-import ".." // Per accedere a Theme.qml se necessario
+import ".."
 
 Dialog {
     id: control
@@ -11,16 +11,13 @@ Dialog {
     modal: true
     focus: true
 
-    // Proprietà dinamiche
-    property string titleText: "Elimina Indirizzo IP"
-    property string messageText: "" // L'IP da mostrare
+    property string titleText: "Delete IP Address"
+    property string messageText: ""
     signal confirmed()
 
-    // Dimensioni fisse per un look bilanciato
     implicitWidth: 400
     implicitHeight: 300
 
-    // Animazioni di entrata/uscita
     enter: Transition {
         NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 200; easing.type: Easing.OutCubic }
         NumberAnimation { property: "scale"; from: 0.9; to: 1.0; duration: 200; easing.type: Easing.OutBack }
@@ -49,7 +46,6 @@ Dialog {
         anchors.margins: 30
         spacing: 20
 
-        // SEZIONE ICONA E TITOLO
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 12
@@ -59,7 +55,6 @@ Dialog {
                 Layout.preferredHeight: 64
                 Layout.alignment: Qt.AlignHCenter
 
-                // Sfondo circolare tenue per l'icona
                 Rectangle {
                     anchors.fill: parent
                     radius: 32
@@ -68,7 +63,7 @@ Dialog {
 
                 Image {
                     id: warningIcon
-                    source: "qrc:/icons/warning.svg" // La tua icona QRC
+                    source: "qrc:/icons/warning.svg"
                     anchors.centerIn: parent
                     width: 32
                     height: 32
@@ -76,13 +71,13 @@ Dialog {
                     asynchronous: false
                     cache: true
                     mipmap: true
-                    visible: false // Nascondiamo l'originale per l'overlay
+                    visible: false
                 }
 
                 ColorOverlay {
                     anchors.fill: warningIcon
                     source: warningIcon
-                    color: "#ef4444" // Rosso pericolo standard
+                    color: "#ef4444"
                 }
             }
 
@@ -96,13 +91,12 @@ Dialog {
             }
         }
 
-        // SEZIONE MESSAGGIO
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 4
 
             Text {
-                text: "Sei sicuro di voler eliminare definitivamente:"
+                text: "Are you sure you want to permanently delete:"
                 color: Theme.textDim
                 font.pixelSize: 14
                 Layout.fillWidth: true
@@ -122,14 +116,13 @@ Dialog {
 
         Item { Layout.fillHeight: true }
 
-        // BOTTONI DI AZIONE
         RowLayout {
             Layout.fillWidth: true
             spacing: 15
 
             VpnButton {
                 id: cancelBtn
-                text: "Annulla"
+                text: "Cancel"
                 Layout.fillWidth: true
                 Layout.preferredHeight: 45
                 onClicked: control.close()
@@ -151,7 +144,7 @@ Dialog {
 
             VpnButton {
                 id: deleteBtn
-                text: "Elimina"
+                text: "Delete IP"
                 Layout.fillWidth: true
                 Layout.preferredHeight: 45
                 onClicked: {

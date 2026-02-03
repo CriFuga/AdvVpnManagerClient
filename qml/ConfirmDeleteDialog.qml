@@ -14,7 +14,6 @@ Dialog {
         NumberAnimation { property: "scale"; from: 0.9; to: 1.0; duration: 200; easing.type: Easing.OutBack }
     }
 
-    // ANIMAZIONE DI USCITA (Fade out + Scale down)
     exit: Transition {
         NumberAnimation { property: "opacity"; from: 1.0; to: 0.0; duration: 150; easing.type: Easing.InCubic }
         NumberAnimation { property: "scale"; from: 1.0; to: 0.9; duration: 150; easing.type: Easing.InCubic }
@@ -26,7 +25,6 @@ Dialog {
     header: null
     footer: null
 
-    // Dimensioni fisse per rompere il binding loop
     implicitWidth: 420
     implicitHeight: mainLayout.implicitHeight + 40
 
@@ -38,7 +36,7 @@ Dialog {
         layer.enabled: true
         layer.effect: DropShadow {
             transparentBorder: true
-            color: Theme.darkMode ? "#60000000" : "#20000000" // Ombra più leggera in light mode
+            color: Theme.darkMode ? "#60000000" : "#20000000"
             radius: 20
         }
     }
@@ -48,14 +46,14 @@ Dialog {
         spacing: 20
         anchors.margins: 30
 
-        // Header centrato con Icona
+
         RowLayout {
             Layout.alignment: Qt.AlignHCenter
             spacing: 15
 
             Rectangle {
                 width: 36; height: 36; radius: 18
-                color: "#fef2f2" // Sfondo rosso chiarissimo per l'icona
+                color: "#fef2f2"
                 Text {
                     anchors.centerIn: parent
                     text: "!"
@@ -67,38 +65,34 @@ Dialog {
 
             Label {
                 text: control.titleText
-                color: Theme.darkMode ? "#ffffff" : "#1e293b" // Blu notte profondo per light mode
+                color: Theme.darkMode ? "#ffffff" : "#1e293b"
                 font.bold: true
                 font.pixelSize: 20
             }
         }
 
-        // Testo del messaggio centrato
         Label {
             text: control.messageText
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignHCenter
-            // Colore più scuro in light mode per leggibilità
             color: Theme.darkMode ? "#94a3b8" : "#334155"
             font.pixelSize: 16
             wrapMode: Text.WordWrap
             lineHeight: 1.2
         }
 
-        // Bottoni compatti e centrati
         RowLayout {
             Layout.alignment: Qt.AlignHCenter
             spacing: 15
 
             VpnButton {
                 id: cancelBtn
-                text: "Annulla"
+                text: "Cancel"
                 Layout.preferredWidth: 100
                 Layout.preferredHeight: 38
 
                 contentItem: Text {
                     text: cancelBtn.text
-                    // Grigio scuro/Blu in light mode, bianco in dark
                     color: Theme.darkMode ? "#ffffff" : "#475569"
                     font.bold: true
                     horizontalAlignment: Text.AlignHCenter
@@ -117,7 +111,7 @@ Dialog {
 
             VpnButton {
                 id: delBtn
-                text: "Elimina"
+                text: "Delete"
                 Layout.preferredWidth: 100
                 Layout.preferredHeight: 38
 
@@ -130,7 +124,6 @@ Dialog {
                 }
 
                 background: Rectangle {
-                    // Gradiente di rosso: più scuro se premuto
                     color: delBtn.pressed ? "#b91c1c" : "#ef4444"
                     radius: 10
                 }

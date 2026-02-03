@@ -3,7 +3,6 @@ import Qt5Compat.GraphicalEffects
 
 Item {
     id: root
-    // Opacity logic for the entire view
     opacity: visible ? 1.0 : 0.0
     Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.InOutQuad } }
 
@@ -42,7 +41,7 @@ Item {
             font.pixelSize: 18
             font.weight: Font.Medium
             anchors.horizontalCenter: parent.horizontalCenter
-            renderType: Text.NativeRendering // Ensures sharp text
+            renderType: Text.NativeRendering
         }
     }
 }

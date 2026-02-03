@@ -13,8 +13,6 @@ Item {
     property bool isSelected: false
     property bool isEditingMode: false
     property string tempName: ""
-
-    // PROPRIETÀ PER IL FEEDBACK VISIVO
     property bool isModified: false
 
     signal renameRequested(string oldName, string newName)
@@ -27,7 +25,6 @@ Item {
             if (cleanNewName !== "" && cleanNewName !== groupName) {
                 itemRoot.renameRequested(groupName, cleanNewName);
             }
-            // Quando chiudiamo con la "V", resettiamo il colore verde
             isModified = false;
         } else {
             tempName = groupName;
@@ -42,15 +39,12 @@ Item {
         anchors.margins: 4
         radius: 8
 
-        // LOGICA COLORE AGGIORNATA
         color: {
-            // Se il gruppo non ha ancora un ID o è appena stato creato localmente
             if (isModified /*|| groupName === tempName*/) return "#065f46";
             if (isSelected) return "#1F3A5F";
             return "transparent";
         }
 
-        // Bordo verde se modificato, altrimenti blu se selezionato
         border.color: isModified ? "#10b981" : (isSelected ? "#3B82F6" : "transparent")
         border.width: (isModified || isSelected) ? 1 : 0
 
@@ -106,7 +100,7 @@ Item {
                 }
 
                 onAccepted: {
-                    // Se il testo è cambiato rispetto all'originale, colora di verde
+
                     if (tempName.trim() !== groupName) {
                         isModified = true;
                     }
@@ -123,7 +117,7 @@ Item {
                                     }
                                     if (event.key === Qt.Key_Escape) {
                                         tempName = groupName;
-                                        isModified = false; // Reset se annulli con ESC
+                                        isModified = false;
                                         itemRoot.forceActiveFocus();
                                         event.accepted = true;
                                     }
@@ -178,7 +172,7 @@ Item {
                         cursorShape: Qt.PointingHandCursor
 
                         onClicked: {
-                            deleteGroupDialog.groupName = groupName // Assicurati che 'model.name' sia il nome del gruppo
+                            deleteGroupDialog.groupName = groupName
                             deleteGroupDialog.open();
                         }
                     }

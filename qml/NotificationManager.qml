@@ -12,15 +12,14 @@ Item {
         toastElement.showRequested = true
     }
 
-    // AGGIUNGI QUESTA FUNZIONE
     function hide() {
         if (!toastElement || !toastElement.showRequested) return
-        hideTimer.restart() // Avvia il countdown di 2 secondi prima di chiudere davvero
+        hideTimer.restart()
     }
 
     Timer {
         id: hideTimer
-        interval: 2000 // I tuoi 2 secondi di "grazia"
+        interval: 2000
         onTriggered: {
             if (toastElement) toastElement.showRequested = false
         }

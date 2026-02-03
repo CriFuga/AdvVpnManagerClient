@@ -1,5 +1,4 @@
 #include "advvpnitem.h"
-#include <QtEndian>
 
 QStringView AdvVpnItem::trimToken(QStringView v)
 {
@@ -21,8 +20,8 @@ bool AdvVpnItem::parseIPv4(QStringView s, quint32 &outHostOrder, QString *error)
         if (error) *error = QString("Invalid IPv4 address: '%1'").arg(str);
         return false;
     }
-    const quint32 net = ha.toIPv4Address();   // big-endian raw
-    outHostOrder = qFromBigEndian(net);       // convert to host order
+    outHostOrder = ha.toIPv4Address();   // big-endian raw
+    //outHostOrder = qFromBigEndian(net);       // convert to host order
     return true;
 }
 
@@ -35,8 +34,8 @@ quint32 AdvVpnItem::maskFromPrefix(int prefix)
 
 QString AdvVpnItem::hostToString(quint32 hostOrder)
 {
-    const quint32 net = qToBigEndian(hostOrder);
-    return QHostAddress(net).toString();
+    auto tmp = QHostAddress(hostOrder).toString();
+    return tmp;
 }
 
 AdvVpnItem *AdvVpnItem::fromJson(const QJsonObject &json)
@@ -53,7 +52,6 @@ AdvVpnItem *AdvVpnItem::fromJson(const QJsonObject &json)
     else if (kindStr == "net") {
         int prefix = json["prefix"].toInt(-1);
         QString ipOnly = valueStr.section('/', 0, 0);
-
         item = AdvNetItem::create(ipOnly, prefix, &error);
     }
     else if (kindStr == "range") {
@@ -80,8 +78,7 @@ AdvVpnItem *AdvVpnItem::fromJson(const QJsonObject &json)
 bool AdvVpnItem::contains(const QHostAddress &addr) const
 {
     if (addr.protocol() != QAbstractSocket::IPv4Protocol) return false;
-    const quint32 host = qFromBigEndian(addr.toIPv4Address());
-    return contains(host);
+    return contains(addr.toIPv4Address());
 }
 
 AdvVpnItem *AdvAddressItem::create(QStringView ip, QString *error)
@@ -141,7 +138,8 @@ bool AdvNetItem::contains(quint32 ipv4HostOrder) const
 
 QString AdvNetItem::toString() const
 {
-    return QString("%1/%2").arg(hostToString(m_start)).arg(m_prefix);
+    auto tmp = QString("%1/%2").arg(hostToString(m_start)).arg(m_prefix);
+    return tmp;
 }
 
 QJsonObject AdvNetItem::toJson() const

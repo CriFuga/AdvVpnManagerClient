@@ -14,7 +14,6 @@ Dialog {
         NumberAnimation { property: "scale"; from: 0.9; to: 1.0; duration: 200; easing.type: Easing.OutBack }
     }
 
-    // ANIMAZIONE DI USCITA (Fade out + Scale down)
     exit: Transition {
         NumberAnimation { property: "opacity"; from: 1.0; to: 0.0; duration: 150; easing.type: Easing.InCubic }
         NumberAnimation { property: "scale"; from: 1.0; to: 0.9; duration: 150; easing.type: Easing.InCubic }
@@ -30,7 +29,6 @@ Dialog {
 
     signal groupAdded(string name)
 
-    // Funzione centralizzata per l'invio
     function submit() {
         let name = groupNameInput.text.trim()
         if (name.length > 0) {
@@ -48,7 +46,6 @@ Dialog {
         border.color: Theme.border
         border.width: 1
 
-        // Ombra per staccare dal background
         layer.enabled: true
         layer.effect: DropShadow {
             transparentBorder: true
@@ -61,7 +58,6 @@ Dialog {
             anchors.margins: 30
             spacing: 20
 
-            // HEADER CENTRATO
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 8
@@ -84,7 +80,6 @@ Dialog {
                 }
             }
 
-            // CAMPO DI INPUT
             TextField {
                 id: groupNameInput
                 Layout.fillWidth: true
@@ -112,17 +107,17 @@ Dialog {
 
             Item { Layout.fillHeight: true }
 
-            // BOTTONI
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 15
 
                 VpnButton {
                     id: cancelBtn
-                    text: "Annulla"
+                    text: "Cancel"
                     Layout.fillWidth: true
                     Layout.preferredHeight: 42
                     onClicked: control.close()
+                    KeyNavigation.right: confirmBtn
 
                     contentItem: Text {
                         text: cancelBtn.text
@@ -142,11 +137,12 @@ Dialog {
 
                 VpnButton {
                     id: confirmBtn
-                    text: "Crea"
+                    text: "Create"
                     Layout.fillWidth: true
                     Layout.preferredHeight: 42
                     enabled: groupNameInput.text.trim().length > 0
                     onClicked: control.submit()
+                    KeyNavigation.left: cancelBtn
 
                     background: Rectangle {
                         color: confirmBtn.enabled ? (confirmBtn.hovered ? Qt.darker(Theme.accent, 1.1) : Theme.accent) : "#334155"

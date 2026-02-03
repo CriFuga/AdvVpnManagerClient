@@ -4,6 +4,7 @@
 #include <QSortFilterProxyModel>
 
 #include "advvpngroupmodel.h"
+#include "advvpngroupproxymodel.h"
 #include "advvpnitemmodel.h"
 #include "advvpnsocket.h"
 #include "clientcontroller.h"
@@ -17,39 +18,46 @@ int main(int argc, char *argv[])
 
     QGuiApplication app(argc, argv);
 
-    // 1. Inizializzazione Modelli
+    // 1. Inizializzazione Modelli Sorgente
     AdvVpnGroupModel groupModel;
-
-    // Proxy per la ricerca nella Sidebar
-    QSortFilterProxyModel *proxyModel = new QSortFilterProxyModel();
-    proxyModel->setSourceModel(&groupModel);
-    proxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
-    proxyModel->setFilterRole(AdvVpnGroupModel::NameRole);
-
     AdvVpnItemModel itemModel;
     itemModel.setGroupModel(&groupModel);
 
-    // 2. Inizializzazione Controller e Socket
-    // Usiamo l'istanza globale se definita come Singleton, altrimenti quella locale
-    AdvVpnSocket socket;
+    // 2. Configurazione Proxy Gruppi (Sidebar)
+    AdvVpnGroupProxyModel *groupProxy = new AdvVpnGroupProxyModel();
+    groupProxy->setSourceModel(&groupModel);
+    groupProxy->setDynamicSortFilter(true);
+    groupProxy->setFilterCaseSensitivity(Qt::CaseInsensitive);
+    groupProxy->sort(0, Qt::AscendingOrder); // Ordinamento alfabetico automatico
 
-    // Passiamo le istanze ESATTE dei modelli al controller
+    // 3. Configurazione Proxy Item (Lista IP centrale)
+    QSortFilterProxyModel *itemProxy = new QSortFilterProxyModel();
+    itemProxy->setSourceModel(&itemModel);
+    itemProxy->setFilterRole(AdvVpnItemModel::IsHiddenRole); // Filtro per visibilità
+    itemProxy->setFilterFixedString("false");               // Mostra solo i non nascosti
+    itemProxy->setDynamicSortFilter(true);
+
+    // 4. Inizializzazione Socket e Controller
+    AdvVpnSocket socket;
+    // Passiamo i modelli reali al controller (lui deve poter modificare tutto)
     ClientController controller(&groupModel, &itemModel);
 
     ThemeManager themeManager;
-
     QQmlApplicationEngine engine;
 
-    // 3. Registrazione Proprietà di Contesto
+    // 5. Registrazione Proprietà di Contesto
     engine.rootContext()->setContextProperty("Theme", &themeManager);
 
-    // ATTENZIONE: Usa nomi diversi per il modello reale e il proxy!
-    engine.rootContext()->setContextProperty("rawGroupModel", &groupModel);
-    engine.rootContext()->setContextProperty("groupModel", proxyModel);
+    // NOTA: Passiamo i PROXY alla UI per gestire ricerca e invisibilità (Undo)
+    engine.rootContext()->setContextProperty("groupModel", groupProxy);
+    controller.setGroupProxy(groupProxy);
+    engine.rootContext()->setContextProperty("itemModel", itemProxy); // <--- RIMOSSA LA DOPPIA RIGA ERRATA
 
-    engine.rootContext()->setContextProperty("itemModel", &itemModel);
+    engine.rootContext()->setContextProperty("rawGroupModel", &groupModel);
+    engine.rootContext()->setContextProperty("rawItemModel", &itemModel);
     engine.rootContext()->setContextProperty("AdvVpnSocket", &socket);
     engine.rootContext()->setContextProperty("controller", &controller);
+    engine.rootContext()->setContextProperty("syncModel", controller.syncModel());
 
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed,
                      &app, []() { QCoreApplication::exit(-1); }, Qt::QueuedConnection);

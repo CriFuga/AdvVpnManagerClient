@@ -1,262 +1,223 @@
 #include "clientcontroller.h"
 #include "advvpngroupmodel.h"
 #include "advvpnitemmodel.h"
-#include "advvpngroup.h"
 #include "advvpnsocket.h"
+#include "advvpngroup.h"
 #include <QJsonArray>
+#include <QRegularExpression>
+#include <QJsonDocument>
 #include <QDebug>
 
-ClientController::ClientController(AdvVpnGroupModel *groupModel,
-                                   AdvVpnItemModel *itemModel,
-                                   QObject *parent)
-    : QObject(parent)
-    , m_groupModel(groupModel)
-    , m_itemModel(itemModel)
+ClientController::ClientController(AdvVpnGroupModel *groupModel, AdvVpnItemModel *itemModel, QObject *parent)
+    : QObject(parent), m_groupModel(groupModel), m_itemModel(itemModel)
 {
+    // Inizializziamo il buffer e il modello per la UI del Sync
+    m_changesBuffer = new ChangesBufferManager(this);
+    m_syncModel = new ChangesBufferModel(m_changesBuffer, this);
+
+    setupBufferConnections();
+
+    // Colleghiamo il conteggio dei cambiamenti per il badge della UI
+    connect(m_changesBuffer, &ChangesBufferManager::countChanged, this, &ClientController::pendingChangesCountChanged);
+
     auto socket = AdvVpnSocket::instance();
     if (socket) {
-        connect(socket, &AdvVpnSocket::syncDataReceived,
-                this, &ClientController::onSyncDataReceived);
-
-        qInfo() << "✅ ClientController pronto per la sincronizzazione remota.";
+        connect(socket, &AdvVpnSocket::syncDataReceived, this, &ClientController::onSyncDataReceived);
     }
 }
 
-void ClientController::start()
-{
+// --- GESTIONE CONNESSIONE ---
+
+void ClientController::start() {
     if (auto socket = AdvVpnSocket::instance()) {
         socket->openConnection();
     }
 }
 
-void ClientController::sendCnUpdate(const QString &ip, const QString &newCn)
-{
+// --- API RICHIESTE (SCRITTURA NEL BUFFER) ---
+
+void ClientController::sendIdUpdate(const QString &ip, const QString &newId) {
     if (ip.isEmpty()) return;
 
-    // 1. Dati per il payload JSON finale
-    QVariantMap data;
-    data["ip"] = ip;
-    data["cn"] = newCn.trimmed();
+    VpnAction a;
+    a.type = VpnAction::UpdateId;
+    a.targetId = ip;
+    a.newValue = newId.trimmed();
+    a.groupId = m_itemModel->currentGroupName();
+    a.description = QString("Assegnato ID %1 a %2").arg(newId.isEmpty() ? "Vuoto" : newId, ip);
 
-    QString desc = QString("Certificato per %1: %2")
-                       .arg(ip, newCn.isEmpty() ? "Rimosso" : newCn);
-
-    // 2. Registriamo lo Staging (per il toast e la lista modifiche)
-    recordChange("UPDATE_CN_MAPPING", desc, data);
-
-    // 3. AGGIORNAMENTO LOCALE IMMEDIATO (Fondamentale!)
-    // Questo deve chiamare una funzione nel tuo AdvVpnItemModel che aggiorna la mappa ip->cn
-    if (m_itemModel) {
-        m_itemModel->updateCnLocally(ip, newCn.trimmed());
-    }
-
-    qInfo() << "📝 Update CN registrato localmente per" << ip << "->" << newCn;
+    m_changesBuffer->addAction(a); // Ottimizzazione automatica
+    m_itemModel->updateCnLocally(ip, newId.trimmed());
 }
 
-void ClientController::addGroupRequest(const QString &groupName)
-{
-    if (groupName.trimmed().isEmpty()) return;
+void ClientController::addGroupRequest(const QString &groupName) {
+    QString name = groupName.trimmed();
+    if (name.isEmpty()) return;
 
-    // 1. Prepariamo i dati per il Sync futuro
-    QVariantMap data;
-    data["groupName"] = groupName.trimmed();
+    VpnAction a;
+    a.type = VpnAction::CreateGroup;
+    a.targetId = name;
+    a.description = "Nuovo gruppo: " + name;
 
-    // 2. Registriamo la modifica (Staging)
-    recordChange("ADD_GROUP_REQUEST",
-                 "Aggiunta nuovo gruppo: " + groupName,
-                 data);
-
-    // implement signals of conflict detection in the model using the m_groupModel one
-    if (m_groupModel) {
-        connect(m_groupModel, &AdvVpnGroupModel::conflictsDetected,
-                this, &ClientController::errorsOccurred);
-    }
-
-    m_groupModel->addGroupLocally(groupName.trimmed());
+    m_changesBuffer->addAction(a);
+    m_groupModel->addGroupLocally(name);
 }
 
-void ClientController::addIpRequest(const QString &groupName, const QString &ipAddress)
-{
+void ClientController::addIpRequest(const QString &groupName, const QString &ipAddress) {
     if (groupName.isEmpty() || ipAddress.trimmed().isEmpty()) return;
 
-    QVariantMap data;
-    data["groupName"] = groupName;
-    data["ipAddress"] = ipAddress.trimmed();
+    VpnAction a;
+    a.type = VpnAction::AddIp;
+    a.targetId = ipAddress.trimmed();
+    a.groupId = groupName;
+    a.description = QString("Aggiunto IP %1 a %2").arg(ipAddress, groupName);
 
-    recordChange("ADD_IP_REQUEST", QString("Aggiungi IP %1 a %2").arg(ipAddress, groupName), data);
-
-    // Aggiorna la lista IP a destra (UI)
-    m_itemModel->addIpLocally(ipAddress);
+    m_changesBuffer->addAction(a);
+    m_itemModel->addIpLocally(ipAddress.trimmed());
 }
 
-void ClientController::removeGroupRequest(const QString &groupName)
-{
-    if (groupName.trimmed().isEmpty()) return;
+void ClientController::removeGroupRequest(const QString &groupName) {
+    if (groupName.isEmpty()) return;
 
-    if (m_itemModel && m_itemModel->currentGroupName() == groupName) {
-        m_itemModel->clear();
-        // Opzionale: se hai una proprietà nella Sidebar per l'indice corrente, resettala a -1
-    }
+    m_changesBuffer->removeActionsRelatedToGroup(groupName);
 
-    m_groupModel->removeGroupLocally(groupName);
-
-    QVariantMap data;
-    data["groupName"] = groupName;
-
-    recordChange("REMOVE_GROUP_REQUEST", "Eliminazione gruppo: " + groupName, data);
+    VpnAction a;
+    a.type = VpnAction::DeleteGroup;
+    a.targetId = groupName;
+    a.description = "Eliminazione gruppo: " + groupName;
+    m_changesBuffer->addAction(a);
+    m_groupModel->setGroupHidden(groupName, true);
 }
 
-void ClientController::renameGroupRequest(const QString &oldName, const QString &newName)
-{
-    QString trimmedNew = newName.trimmed();
-    if (oldName == trimmedNew || trimmedNew.isEmpty()) return;
+void ClientController::renameGroupRequest(const QString &oldName, const QString &newName) {
+    if (oldName == newName || newName.trimmed().isEmpty()) return;
 
-    static QRegularExpression re("^[a-zA-Z0-9_-]+$");
-    if (!re.match(trimmedNew).hasMatch()) {
-        qWarning() << "⚠️ Nome non valido:" << trimmedNew;
-        return;
-    }
+    VpnAction a;
+    a.type = VpnAction::RenameGroup;
+    a.targetId = oldName;
+    a.newValue = newName.trimmed();
+    a.description = QString("Rinominato %1 -> %2").arg(oldName, newName);
 
-    // 1. Prepariamo i dati per il Sync futuro
-    QVariantMap data;
-    data["oldName"] = oldName;
-    data["newName"] = trimmedNew;
-
-    QString desc = QString("Rinomina gruppo '%1' in '%2'").arg(oldName, trimmedNew);
-
-    // 2. Registriamo la modifica invece di inviarla subito
-    recordChange("RENAME_GROUP_REQUEST", desc, data);
-
-    // 3. Aggiorniamo la UI locale immediatamente
-    m_groupModel->updateGroupNameLocally(oldName, trimmedNew);
+    m_changesBuffer->addAction(a);
+    m_groupModel->updateGroupNameLocally(oldName, newName.trimmed());
 }
 
-void ClientController::commitSync()
-{
-    if (m_pendingChanges.isEmpty()) return;
+void ClientController::requestRemoveIp(const QString &groupName, const QString &ipAddress) {
+    if (groupName.isEmpty() || ipAddress.isEmpty()) return;
 
-    if (auto socket = AdvVpnSocket::instance()) {
-        QJsonObject rootJson;
-        rootJson["type"] = "BULK_SYNC_REQUEST";
+    VpnAction a;
+    a.type = VpnAction::DeleteIp;
+    a.targetId = ipAddress;
+    a.groupId = groupName;
+    a.description = QString("Rimosso IP %1 da %2").arg(ipAddress, groupName);
 
-        QJsonArray changesArray;
-        for (const PendingChange &change : m_pendingChanges) {
-            QJsonObject changeObj;
-            changeObj["type"] = change.type;
-            changeObj["data"] = QJsonObject::fromVariantMap(change.data);
-            changesArray.append(changeObj);
-        }
-        rootJson["changes"] = changesArray;
-
-        // Invio massivo al server
-        socket->sendJson(rootJson);
-
-        // Pulizia della coda locale
-        m_pendingChanges.clear();
-        emit pendingChangesChanged();
-
-        qInfo() << "🚀 Sincronizzazione massiva inviata al server.";
-    }
+    m_changesBuffer->addAction(a);
+    m_itemModel->setItemHidden(ipAddress, true);
 }
 
-void ClientController::discardChanges()
-{
-    if (m_pendingChanges.isEmpty()) return;
-
-    // 1. Svuota la lista delle modifiche
-    m_pendingChanges.clear();
-
-    // 2. Notifica QML che la lista e il conteggio sono cambiati
-    emit pendingChangesChanged();
-
-    // 3. Opzionale: Richiedi un SYNC aggiornato al server per resettare la UI locale
-    if (auto socket = AdvVpnSocket::instance()) {
-        QJsonObject req;
-        req["type"] = "FETCH_FULL_STATE"; // Assicurati che il server gestisca questo comando
-        socket->sendJson(req);
-        qInfo() << "🔄 Richiesta di sincronizzazione completa inviata al server.";
-    }
-
-    qInfo() << "♻️ Modifiche locali annullate e coda svuotata.";
-}
-
-void ClientController::requestRemoveIp(const QString &groupName, const QString &ipAddress)
-{
-    // Debug per vedere cosa arriva davvero
-    qDebug() << "DEBUG CONTROLLER -> Gruppo:" << groupName << "| IP:" << ipAddress;
-
-    if (groupName.isEmpty() || ipAddress.trimmed().isEmpty()) return;
-
-    // Chiamata al modello con l'IP corretto
-    if (m_itemModel) {
-        m_itemModel->removeIpLocally(ipAddress.trimmed());
-    }
-
-    // Registrazione per il Sync
-    QVariantMap data;
-    data["groupName"] = groupName;
-    data["ipAddress"] = ipAddress.trimmed();
-
-    recordChange("REMOVE_IP_REQUEST",
-                 QString("Elimina IP %1 dal gruppo %2").arg(ipAddress, groupName),
-                 data);
-}
-
-
-void ClientController::recordChange(const QString &type, const QString &desc, const QVariantMap &data) {
-
-    PendingChange change = {type, desc, data};
-    m_pendingChanges.append(change);
-
-    // Questo è vitale: forza QML a rileggere la lista!
-    emit pendingChangesChanged();
-}
-
-void ClientController::updateIpLocally(const QString &oldIp, const QString &newIp)
-{
+void ClientController::updateIpRequest(const QString &oldIp, const QString &newIp) {
     if (oldIp == newIp || newIp.trimmed().isEmpty()) return;
 
-    m_itemModel->renameIpLocally(oldIp, newIp);
+    VpnAction a;
+    a.type = VpnAction::UpdateIp;
+    a.targetId = oldIp;
+    a.newValue = newIp.trimmed();
+    a.groupId = m_itemModel->currentGroupName();
+    a.description = QString("Cambiato IP: %1 -> %2").arg(oldIp, newIp);
 
-    QVariantMap data;
-    data["old_ip"] = oldIp;
-    data["new_ip"] = newIp;
-
-    data["group_name"] = m_itemModel->currentGroupName();
-
-    recordChange("RENAME_IP_REQUEST",
-                 QString("Rinomina IP: %1 -> %2").arg(oldIp, newIp),
-                 data);
+    m_changesBuffer->addAction(a);
+    m_itemModel->renameIpLocally(oldIp, newIp.trimmed());
 }
 
-QVariantList ClientController::getPendingChangesForQml() const {
-    QVariantList list;
-    for (const auto &change : m_pendingChanges) {
-        QVariantMap map;
-        map["description"] = change.description;
-        map["type"] = change.type;
-        list.append(map);
+void ClientController::selectGroupFromProxy(int proxyRow) {
+    if (!m_groupProxy || proxyRow < 0) return;
+
+    QModelIndex proxyIndex = m_groupProxy->index(proxyRow, 0);
+
+    QModelIndex sourceIndex = m_groupProxy->mapToSource(proxyIndex);
+
+    m_itemModel->setGroupIndex(sourceIndex.row());
+
+    qDebug() << "Mappato proxy row" << proxyRow << "a source row" << sourceIndex.row();
+}
+
+// --- SYNC E DISCARD ---
+
+void ClientController::commitSync() {
+    auto actions = m_changesBuffer->buffer();
+    if (actions.isEmpty()) return;
+
+    QJsonObject root;
+    root["type"] = "BULK_SYNC_REQUEST";
+    QJsonArray changes;
+
+    for (const auto &a : actions) {
+        QJsonObject op;
+        op["op"] = actionTypeToString(a.type);
+        QJsonObject data;
+        data["target"] = a.targetId;
+        data["value"] = a.newValue.toString();
+        data["parent"] = a.groupId;
+        op["data"] = data;
+        changes.append(op);
     }
-    return list;
+    root["changes"] = changes;
+
+    // Debugging del pacchetto in uscita
+    QJsonDocument doc(root);
+    qDebug().noquote() << "📤 INVIO BULK SYNC:\n" << doc.toJson(QJsonDocument::Indented);
+
+    if (auto s = AdvVpnSocket::instance()) {
+        s->sendJson(root);
+        m_changesBuffer->clear();
+        emit pendingChangesCountChanged();
+    }
 }
 
-void ClientController::onSyncDataReceived(const QJsonObject &data)
-{
+void ClientController::discardChanges() {
+    m_changesBuffer->clear();
+    emit pendingChangesCountChanged();
+
+    // Ricarichiamo tutto dal server per annullare le modifiche locali "non committate"
+    if (auto socket = AdvVpnSocket::instance()) {
+        QJsonObject req;
+        req["type"] = "FETCH_FULL_STATE";
+        socket->sendJson(req);
+    }
+}
+
+// --- HELPERS E CALLBACKS ---
+
+QString ClientController::actionTypeToString(VpnAction::Type type) {
+    switch(type) {
+    case VpnAction::CreateGroup: return "ADD_GROUP";
+    case VpnAction::DeleteGroup: return "DEL_GROUP";
+    case VpnAction::UpdateId:    return "SET_ID";
+    case VpnAction::UpdateIp:    return "RENAME_IP";
+    case VpnAction::AddIp:       return "ADD_IP";
+    case VpnAction::DeleteIp:    return "DEL_IP";
+    case VpnAction::RenameGroup: return "RENAME_GROUP";
+    default:                     return "UNKNOWN";
+    }
+}
+
+void ClientController::onSyncDataReceived(const QJsonObject &data) {
     int currentIndex = m_itemModel->currentGroupIndex();
 
+    // Aggiornamento Gruppi
     QJsonArray groupsArr = data["groups"].toArray();
     QList<AdvVpnGroup*> newGroups;
     for(const auto &val : groupsArr) {
         AdvVpnGroup *g = AdvVpnGroup::fromJson(val.toObject());
         if(g) newGroups.append(g);
     }
-
     m_groupModel->setGroups(newGroups);
 
     if (currentIndex >= 0) {
         m_itemModel->setGroupIndex(currentIndex);
     }
 
+    // Aggiornamento Mappatura CN/ID
     QJsonArray cnsArr = data["cns"].toArray();
     QHash<QString, QString> serverCnMap;
     QStringList serverCnsList;
@@ -279,5 +240,48 @@ void ClientController::onSyncDataReceived(const QJsonObject &data)
     m_availableCns = serverCnsList;
 
     emit availableCnsChanged();
-    qInfo() << "📥 UI Sincronizzata con il database del Server.";
+    qInfo() << "Database sincronizzato con successo dal server.";
+}
+
+void ClientController::setupBufferConnections() {
+    connect(m_changesBuffer, &ChangesBufferManager::countChanged, this, &ClientController::pendingChangesCountChanged);
+    connect(m_changesBuffer, &ChangesBufferManager::actionUndone, this, &ClientController::rollbackAction);
+}
+
+void ClientController::rollbackAction(const VpnAction &a)
+{
+    qDebug() << "🔄 Rollback (Visuale) per azione:" << a.description;
+
+    switch(a.type) {
+    case VpnAction::DeleteGroup:
+        m_groupModel->setGroupHidden(a.targetId, false);
+        if (m_groupProxy) {
+            m_groupProxy->invalidate();
+            m_groupProxy->sort(0, Qt::AscendingOrder);
+        }
+        break;
+
+    case VpnAction::DeleteIp:
+        m_itemModel->setItemHidden(a.targetId, false);
+        break;
+
+    case VpnAction::UpdateIp:
+        m_itemModel->renameIpLocally(a.newValue.toString(), a.oldValue.toString());
+        break;
+
+    case VpnAction::UpdateId:
+        m_itemModel->updateCnLocally(a.targetId, a.oldValue.toString());
+        break;
+
+    case VpnAction::CreateGroup:
+        m_groupModel->setGroupHidden(a.targetId, true);
+        break;
+
+    case VpnAction::AddIp:
+        m_itemModel->setItemHidden(a.targetId, true);
+        break;
+
+    default:
+        break;
+    }
 }

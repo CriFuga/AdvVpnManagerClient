@@ -26,7 +26,6 @@ Dialog {
 
     signal ipAdded(string ip)
 
-    // Funzione centralizzata per l'invio (Invio e Clic)
     function submitIp() {
         if (ipInput.acceptableInput) {
             control.ipAdded(ipInput.text.trim())
@@ -43,7 +42,6 @@ Dialog {
         border.color: Theme.border
         border.width: 1
 
-        // Ombra morbida per dare profondità
         layer.enabled: true
         layer.effect: DropShadow {
             transparentBorder: true
@@ -56,7 +54,6 @@ Dialog {
             anchors.margins: 30
             spacing: 20
 
-            // HEADER CENTRATO
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 8
@@ -67,7 +64,7 @@ Dialog {
                     font.pixelSize: 22
                     font.bold: true
                     Layout.fillWidth: true
-                    horizontalAlignment: Text.AlignHCenter // Centratura reale
+                    horizontalAlignment: Text.AlignHCenter
                 }
 
                 Text {
@@ -75,11 +72,10 @@ Dialog {
                     color: Theme.textDim
                     font.pixelSize: 14
                     Layout.fillWidth: true
-                    horizontalAlignment: Text.AlignHCenter // Centratura reale
+                    horizontalAlignment: Text.AlignHCenter
                 }
             }
 
-            // CAMPO INPUT IP
             TextField {
                 id: ipInput
                 Layout.fillWidth: true
@@ -110,14 +106,13 @@ Dialog {
 
             Item { Layout.fillHeight: true }
 
-            // BOTTONI
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 15
 
                 VpnButton {
                     id: cancelBtn
-                    text: "Annulla"
+                    text: "Cancel"
                     Layout.fillWidth: true
                     Layout.preferredHeight: 42
                     onClicked: control.close()
@@ -125,7 +120,7 @@ Dialog {
 
                 VpnButton {
                     id: confirmBtn
-                    text: "Aggiungi"
+                    text: "Add"
                     Layout.fillWidth: true
                     Layout.preferredHeight: 42
                     enabled: ipInput.acceptableInput

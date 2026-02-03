@@ -10,15 +10,12 @@ Dialog {
     modal: true
     focus: true
 
-    // Proprietà specifiche per i Gruppi
     property string groupName: ""
     signal confirmed()
 
-    // Dimensioni bilanciate per il contenuto
     implicitWidth: 420
     implicitHeight: 320
 
-    // Animazioni di entrata/uscita per un feedback moderno
     enter: Transition {
         NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 200; easing.type: Easing.OutCubic }
         NumberAnimation { property: "scale"; from: 0.9; to: 1.0; duration: 200; easing.type: Easing.OutBack }
@@ -47,7 +44,7 @@ Dialog {
         anchors.margins: 30
         spacing: 20
 
-        // SEZIONE ICONA WARNING E TITOLO
+
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 12
@@ -84,7 +81,7 @@ Dialog {
             }
 
             Text {
-                text: "Elimina Gruppo"
+                text: "Delete Group"
                 color: Theme.textMain
                 font.pixelSize: 22
                 font.bold: true
@@ -93,13 +90,13 @@ Dialog {
             }
         }
 
-        // SEZIONE MESSAGGIO
+
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 6
 
             Text {
-                text: "Attenzione! Stai per eliminare il gruppo:"
+                text: "Warning! You are about to delete the group:"
                 color: Theme.textDim
                 font.pixelSize: 14
                 Layout.fillWidth: true
@@ -108,7 +105,7 @@ Dialog {
 
             Text {
                 text: control.groupName
-                color: "#ef4444" // Rosso per evidenziare il nome del gruppo in pericolo
+                color: "#ef4444"
                 font.pixelSize: 18
                 font.bold: true
                 Layout.fillWidth: true
@@ -117,7 +114,7 @@ Dialog {
             }
 
             Text {
-                text: "Questa azione rimuoverà tutti gli IP associati."
+                text: "This action will remove all associated IPs."
                 color: Theme.textDim
                 font.pixelSize: 12
                 font.italic: true
@@ -128,14 +125,13 @@ Dialog {
 
         Item { Layout.fillHeight: true }
 
-        // BOTTONI DI AZIONE
         RowLayout {
             Layout.fillWidth: true
             spacing: 15
 
             VpnButton {
                 id: cancelBtn
-                text: "Annulla"
+                text: "Cancel"
                 Layout.fillWidth: true
                 Layout.preferredHeight: 45
                 onClicked: control.close()
@@ -157,7 +153,7 @@ Dialog {
 
             VpnButton {
                 id: deleteBtn
-                text: "Elimina Gruppo"
+                text: "Delete Group"
                 Layout.fillWidth: true
                 Layout.preferredHeight: 45
                 onClicked: {

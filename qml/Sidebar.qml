@@ -17,26 +17,23 @@ Rectangle {
     Layout.maximumWidth: 600
     color: Theme.sidebarBg || "#1e293b"
 
-    // Dialog per aggiungere un gruppo
     AddGroupDialog {
         id: addGroupDialog
         onGroupAdded: (name) => controller.addGroupRequest(name)
     }
 
     EditGroupDialog {
-            id: editGroupDialog
-            onGroupRenamed: (oldName, newName) => {
-                controller.renameGroupRequest(oldName, newName);
-                // Esci dalla modalità editing dopo il salvataggio per pulizia
-                root.isEditing = false
-            }
-        }
+        id: editGroupDialog
+        onGroupRenamed: (oldName, newName) => {
+                            controller.renameGroupRequest(oldName, newName);
+                            root.isEditing = false
+                        }
+    }
 
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
 
-        // Logo Area
         Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 80
@@ -63,7 +60,6 @@ Rectangle {
             onSearchUpdated: (searchText) => groupModel.setFilterFixedString(searchText)
         }
 
-        // Header Sezione Gruppi con pulsante +
         RowLayout {
             Layout.fillWidth: true
             Layout.leftMargin: 20
@@ -83,8 +79,6 @@ Rectangle {
                 Layout.preferredWidth: 28; Layout.preferredHeight: 28
                 onClicked: {
                     if (root.isEditing) {
-                        // LOGICA DI CONFERMA: Quando premiamo la "V", usciamo dall'editing
-                        // e i cambiamenti vengono visualizzati.
                         root.isEditing = false
                     } else {
                         root.isEditing = true
@@ -115,8 +109,7 @@ Rectangle {
                 id: addGroupBtn
                 Layout.preferredWidth: 26; Layout.preferredHeight: 26
                 onClicked: addGroupDialog.open()
-                visible: !root.isEditing // Nascondiamo il + durante l'editing per pulizia
-
+                visible: !root.isEditing
                 background: Rectangle {
                     color: addGroupBtn.hovered ? "#3B82F6" : "transparent"
                     radius: 6
@@ -130,21 +123,15 @@ Rectangle {
             }
         }
 
-        // 2. LA LINEETTA SEPARATRICE (Divider)
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 1 // Spessore della linea
-            Layout.leftMargin: 30     // Margine per non toccare i bordi
+            Layout.preferredHeight: 1
+            Layout.leftMargin: 30
             Layout.rightMargin: 30
-
-            // Colore dinamico: più chiaro in Dark Mode, più scuro in Light Mode
             color: Theme.darkMode ? "#334155" : "#e2e8f0"
-
-            // Opzionale: un leggero arrotondamento
             radius: 1
         }
 
-        // Spazio extra dopo la linea
         Item { Layout.preferredHeight: 10 }
 
         ListView {
@@ -154,6 +141,10 @@ Rectangle {
             clip: true
             model: groupModel
             spacing: 4
+
+            // --- LOGICA DI SINCRONIZZAZIONE INDICI ---
+
+            // 1. Quando cambia l'elemento selezionato, salviamo il nome per il futuro
             onCurrentIndexChanged: {
                 if (currentIndex >= 0) {
                     var currentModelIndex = model.index(currentIndex, 0);
@@ -163,6 +154,21 @@ Rectangle {
                 }
             }
 
+            // 2. Quando il numero di elementi cambia (es. dopo un Undo), cerchiamo il gruppo per nome
+            onCountChanged: {
+                if (root.currentGroupName !== "") {
+                    for (var i = 0; i < count; i++) {
+                        // model è il groupProxy, quindi cerchiamo tra gli elementi visibili
+                        if (model.data(model.index(i, 0), Qt.DisplayRole) === root.currentGroupName) {
+                            currentIndex = i;
+                            console.log("🔄 Riallineamento: " + root.currentGroupName + " ritrovato all'indice: " + i);
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // --- ANIMAZIONI ---
             add: Transition {
                 NumberAnimation { properties: "opacity"; from: 0; to: 1; duration: 250 }
                 NumberAnimation { properties: "x"; from: -20; to: 0; duration: 250; easing.type: Easing.OutQuad }
@@ -173,27 +179,25 @@ Rectangle {
                 NumberAnimation { properties: "scale"; to: 0.9; duration: 200 }
             }
 
-            // Fa scivolare dolcemente i gruppi rimasti per chiudere lo spazio vuoto
             displaced: Transition {
                 NumberAnimation { properties: "y"; duration: 250; easing.type: Easing.OutQuad }
             }
+
+            // --- DELEGATE ---
             delegate: SidebarItem {
                 width: groupView.width
                 groupName: model.name || ""
                 itemCount: model.itemCount || 0
                 isSelected: groupView.currentIndex === index
-
-                // Passiamo lo stato di editing al delegate
                 isEditingMode: root.isEditing
 
                 onClicked: {
                     if (!root.isEditing) {
                         groupView.currentIndex = index
-                        root.groupSelected(index)
+                        root.groupSelected(index) // Comunica al controller l'indice del proxy
                     }
                 }
 
-                // Nuovo segnale per rinominare il gruppo
                 onRenameRequested: (oldName, newName) => {
                                        controller.renameGroupRequest(oldName, newName);
                                        console.log("Rinomino " + oldName + " in " + newName)
@@ -201,13 +205,12 @@ Rectangle {
 
                 onRemoveRequested: {
                     console.log("Elimino gruppo: " + groupName);
-                    controller.removeGroupRequest(groupName); // Chiama il C++
+                    controller.removeGroupRequest(groupName);
                 }
             }
         }
     }
 
-    // Maniglia per Resize
     MouseArea {
         id: resizeHandle
         width: 6; anchors.right: parent.right; anchors.top: parent.top; anchors.bottom: parent.bottom

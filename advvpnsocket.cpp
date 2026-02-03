@@ -6,7 +6,7 @@
 AdvVpnSocket* AdvVpnSocket::m_instance = nullptr;
 
 AdvVpnSocket::AdvVpnSocket(QObject *parent)
-    : QWebSocket{QString(), QWebSocketProtocol::VersionLatest, parent} // [cite: 18]
+    : QWebSocket{QString(), QWebSocketProtocol::VersionLatest, parent}
 {
     m_instance = this;
 

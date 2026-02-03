@@ -20,6 +20,8 @@ public:
     ~AdvVpnGroup();
 
     bool isValid() const { return true; }
+    bool isHidden() const { return m_isHidden; }
+    void setHidden(bool hidden) { m_isHidden = hidden; }
 
     void setName(const QString &newName) { m_name = newName; }
     void addIp(const QString &ipAddress);
@@ -32,6 +34,7 @@ public:
 
 private:
     QString m_name;
+    bool m_isHidden = false;
     QList<AdvVpnItem *> m_items;
 };
 

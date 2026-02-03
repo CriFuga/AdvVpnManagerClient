@@ -29,7 +29,7 @@ Dialog {
         spacing: 20
 
         Text {
-            text: "Rinomina Gruppo"
+            text: "Rename Group"
             color: Theme.textMain
             font.pixelSize: 20; font.bold: true
             Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter
@@ -37,7 +37,7 @@ Dialog {
 
         ColumnLayout {
             spacing: 8; Layout.fillWidth: true
-            Label { text: "Nuovo nome gruppo"; color: Theme.textDim; font.pixelSize: 12 }
+            Label { text: "New group name"; color: Theme.textDim; font.pixelSize: 12 }
             TextField {
                 id: groupInputField
                 Layout.fillWidth: true; Layout.preferredHeight: 42
@@ -52,10 +52,10 @@ Dialog {
 
         RowLayout {
             Layout.fillWidth: true; spacing: 15
-            VpnButton { text: "Annulla"; Layout.fillWidth: true; onClicked: control.close() }
+            VpnButton { text: "Cancel"; Layout.fillWidth: true; onClicked: control.close() }
             VpnButton {
                 id: modifyBtn
-                text: "Salva"
+                text: "Save Changes"
                 Layout.fillWidth: true
                 enabled: groupInputField.text.trim() !== "" && groupInputField.text !== oldGroupName
                 onClicked: control.accept()

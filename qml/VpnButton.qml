@@ -6,7 +6,6 @@ import Qt5Compat.GraphicalEffects
 Button {
     id: control
 
-    // Proprietà personalizzate
     property string iconSource: ""
     property bool primary: true
     property alias fontPixelSize: buttonText.font.pixelSize

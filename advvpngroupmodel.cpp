@@ -1,5 +1,6 @@
 #include "advvpngroupmodel.h"
 #include "advvpngroup.h"
+#include "advvpnitem.h"
 #include <QDebug>
 #include <QJsonArray>
 
@@ -19,9 +20,7 @@ void AdvVpnGroupModel::setGroups(const QList<AdvVpnGroup *> &groups)
 
 void AdvVpnGroupModel::updateGroupNameLocally(const QString &oldName, const QString &newName) {
     for (int i = 0; i < m_groups.count(); ++i) {
-        // Use -> to access pointer members
         if (m_groups[i]->name() == oldName) {
-            // Use the setter function, not assignment to the getter
             m_groups[i]->setName(newName);
 
             QModelIndex idx = index(i, 0);
@@ -35,7 +34,6 @@ void AdvVpnGroupModel::addGroupLocally(const QString &groupName)
 {
     QString trimmedName = groupName.trimmed();
 
-    // 1. Controllo duplicati locale
     for (const auto &group : m_groups) {
         if (group->name().compare(trimmedName, Qt::CaseInsensitive) == 0){
             emit conflictsDetected(
@@ -45,10 +43,8 @@ void AdvVpnGroupModel::addGroupLocally(const QString &groupName)
         }
     }
 
-    // 2. Creazione dell'oggetto con il nome richiesto
     AdvVpnGroup *newGroup = new AdvVpnGroup(trimmedName);
 
-    // 3. Notifica alla View l'inserimento
     beginInsertRows(QModelIndex(), m_groups.count(), m_groups.count());
     m_groups.append(newGroup);
     endInsertRows();
@@ -60,7 +56,7 @@ void AdvVpnGroupModel::addGroupLocally(const QString &groupName)
 void AdvVpnGroupModel::addIpToGroupLocally(const QString &groupName, const QString &ipAddress)
 {
     for (int i = 0; i < m_groups.count(); ++i) {
-        if (m_groups[i]->name() == groupName) { // Corretto con ->
+        if (m_groups[i]->name() == groupName) {
             m_groups[i]->addIp(ipAddress);
 
             QModelIndex idx = index(i, 0);
@@ -73,7 +69,7 @@ void AdvVpnGroupModel::addIpToGroupLocally(const QString &groupName, const QStri
 void AdvVpnGroupModel::removeGroupLocally(const QString &groupName)
 {
     for (int i = 0; i < m_groups.count(); ++i) {
-        if (m_groups[i]->name() == groupName) { // Corretto con ->
+        if (m_groups[i]->name() == groupName) {
             beginRemoveRows(QModelIndex(), i, i);
             m_groups.removeAt(i);
             endRemoveRows();
@@ -85,6 +81,23 @@ void AdvVpnGroupModel::removeGroupLocally(const QString &groupName)
 void AdvVpnGroupModel::raiseConflicts(const QStringList &msg)
 {
     if (!msg.isEmpty()) emit conflictsDetected(msg);
+}
+
+void AdvVpnGroupModel::setGroupHidden(const QString &groupName, bool hide) {
+    for (int i = 0; i < m_groups.count(); ++i) {
+        if (m_groups[i]->name() == groupName) {
+            m_groups[i]->setHidden(hide);
+
+            if (!hide) {
+                for (auto *item : m_groups[i]->items()) item->setHidden(false);
+            }
+
+            QModelIndex idx = index(i, 0);
+            // Emetti il segnale per tutti i ruoli coinvolti
+            emit dataChanged(idx, idx, {NameRole, IsHiddenRole, ItemCountRole});
+            return;
+        }
+    }
 }
 
 // Returns the group object at the specified row index safely.
@@ -100,7 +113,6 @@ QJsonArray AdvVpnGroupModel::toJsonArray() const
     QJsonArray arr;
     for (const auto *group : m_groups) {
         if (group) {
-            // Qui chiamiamo il metodo toJson() che abbiamo aggiunto prima alla classe AdvVpnGroup
             arr.append(group->toJson());
         }
     }
@@ -124,23 +136,20 @@ int AdvVpnGroupModel::rowCount(const QModelIndex &parent) const
 // Retrieves data for a specific index and role (Display, Name, or ItemCount).
 QVariant AdvVpnGroupModel::data(const QModelIndex &index, int role) const
 {
-    if (!index.isValid()) return {};
-    const int r = index.row();
-    if (r < 0 || r >= m_groups.size()) return {};
+    if (!index.isValid() || index.row() >= m_groups.count()) return QVariant();
+    const auto *item = m_groups.at(index.row());
 
-    auto *group = m_groups.at(r);
-    if (!group) return {};
-
-    switch (role) {
-    case Qt::DisplayRole:
-        return QString("%1 (%2)").arg(group->name()).arg(group->itemCount());
-    case NameRole:
-        return group->name();
-    case ItemCountRole:
-        return group->itemCount();
-    default:
-        return {};
+    if (role == NameRole) return item->name();
+    if (role == IsHiddenRole) return item->isHidden(); // <--- Corretto
+    if (role == ItemCountRole) {
+        // Conta solo gli IP non nascosti per coerenza visiva
+        int count = 0;
+        for (const auto *vpnItem : item->items()) {
+            if (!vpnItem->isHidden()) count++;
+        }
+        return count;
     }
+    return QVariant();
 }
 
 // Maps internal model roles to string names usable in QML.
@@ -148,6 +157,7 @@ QHash<int, QByteArray> AdvVpnGroupModel::roleNames() const
 {
     return {
         { NameRole, "name" },
+        { IsHiddenRole ,"isHidden"},
         { ItemCountRole, "itemCount" }
     };
 }

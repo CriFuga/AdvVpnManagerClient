@@ -1,13 +1,13 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import Qt5Compat.GraphicalEffects // O QtGraphicalEffects se Qt 5
+import Qt5Compat.GraphicalEffects
 
 Rectangle {
     id: root
 
     anchors.fill: parent
-    color: "#CC000000" // Overlay di sfondo più scuro per risaltare il popup
+    color: "#CC000000"
     visible: messages && messages.length > 0
 
     property var messages: []
@@ -20,12 +20,10 @@ Rectangle {
         anchors.centerIn: parent
         radius: 24
 
-        // --- ADATTAMENTO TEMA ---
         color: Theme.panel || "#1e293b"
         border.color: Theme.border || "#334155"
         border.width: 1
 
-        // Ombra per staccare dal fondo nero
         layer.enabled: true
         layer.effect: DropShadow {
             transparentBorder: true
@@ -56,7 +54,7 @@ Rectangle {
                     ColorOverlay {
                         anchors.fill: warnIcon
                         source: warnIcon
-                        color: "#ef4444" // Rosso per il warning, visibile su ogni tema
+                        color: "#ef4444"
                     }
                 }
 
@@ -76,7 +74,6 @@ Rectangle {
                 Layout.fillWidth: true
             }
 
-            // Lista conflitti
             ListView {
                 id: conflictList
                 Layout.fillWidth: true
@@ -89,7 +86,6 @@ Rectangle {
                     width: conflictList.width
                     height: contentText.implicitHeight + 30
                     radius: 12
-                    // Sfondo rosso molto tenue e trasparente in Dark Mode
                     color: Theme.darkMode ? "#25ef4444" : "#08ef4444"
                     border.color: "#40ef4444"
 
@@ -106,7 +102,6 @@ Rectangle {
                 }
             }
 
-            // Bottone Dismiss coordinato
             VpnButton {
                 text: "Dismiss"
                 Layout.alignment: Qt.AlignHCenter

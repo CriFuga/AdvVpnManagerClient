@@ -38,11 +38,10 @@ qt_add_qml_module(appADVVpnManagerClient
         qml/AddIpDialog.qml
         qml/SyncReviewDialog.qml
         qml/EditItemDialog.qml
-        qml/ConfirmDeleteDialog.qml
         qml/ConfirmDeleteIpDialog.qml
-        qml/ConfirmDeleteGroupDialog.qml
-        qml/ConfirmAssignCnDialog.qml
+        qml/ConfirmAssignIdDialog.qml
         qml/EditGroupDialog.qml
+        qml/ConfirmDeleteGroupDialog.qml
     SOURCES
         advvpnsocket.h advvpnsocket.cpp
         advvpngroupmodel.h advvpngroupmodel.cpp
@@ -51,8 +50,12 @@ qt_add_qml_module(appADVVpnManagerClient
         advvpnitemmodel.h advvpnitemmodel.cpp
         clientcontroller.h clientcontroller.cpp
         thememanager.h thememanager.cpp
+        vpnaction.h vpnaction.cpp
+        changesbuffermanager.h changesbuffermanager.cpp
+        changesbuffermodel.h changesbuffermodel.cpp
     RESOURCES
         Resources.qrc
+        SOURCES advvpngroupproxymodel.h advvpngroupproxymodel.cpp
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.

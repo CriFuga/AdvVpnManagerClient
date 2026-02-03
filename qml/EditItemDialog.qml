@@ -7,13 +7,11 @@ Dialog {
     id: control
     anchors.centerIn: parent
 
-    // Proprietà per gestire i dati in entrata e uscita
     property string oldIp: ""
     property string oldCn: ""
     property alias newIpText: ipInputField.text
     property alias newCnText: cnSuggestField.text
 
-    // Segnale unificato per aggiornare sia IP che CN
     signal itemUpdated(string oldIp, string newIp, string newCn)
 
     modal: true
@@ -37,7 +35,6 @@ Dialog {
         let cleanIp = ipInputField.text.trim();
         let cleanCn = cnSuggestField.text.trim();
 
-        // Verifica validità IP (o che sia rimasto invariato se stiamo cambiando solo il CN)
         if (ipInputField.acceptableInput) {
             control.itemUpdated(oldIp, cleanIp, cleanCn);
             control.close();
@@ -46,7 +43,7 @@ Dialog {
 
     background: Rectangle {
         implicitWidth: 400
-        implicitHeight: 380 // Aumentata per ospitare comodamente entrambi i campi
+        implicitHeight: 380
         radius: 20
         color: Theme.panel
         border.color: Theme.border
@@ -64,12 +61,11 @@ Dialog {
             anchors.margins: 30
             spacing: 20
 
-            // HEADER
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 8
                 Text {
-                    text: "Modifica Assegnazione"
+                    text: "Edit Assignment"
                     color: Theme.textMain
                     font.pixelSize: 22
                     font.bold: true
@@ -77,7 +73,7 @@ Dialog {
                     horizontalAlignment: Text.AlignHCenter
                 }
                 Text {
-                    text: "Stai modificando l'elemento: " + oldIp
+                    text: "You are editing the item:: " + oldIp
                     color: Theme.textDim
                     font.pixelSize: 13
                     Layout.fillWidth: true
@@ -85,12 +81,11 @@ Dialog {
                 }
             }
 
-            // SEZIONE INPUT IP
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 6
                 Label {
-                    text: "Indirizzo IP"
+                    text: "IP Adress"
                     color: Theme.textDim
                     font.pixelSize: 12
                     font.bold: true
@@ -101,7 +96,7 @@ Dialog {
                     Layout.preferredHeight: 42
                     color: Theme.textMain
                     font.pixelSize: 14
-                    placeholderText: "Indirizzo IP..."
+                    placeholderText: "IP Adress..."
                     placeholderTextColor: Theme.textDim
                     verticalAlignment: TextInput.AlignVCenter
 
@@ -118,12 +113,11 @@ Dialog {
                 }
             }
 
-            // SEZIONE INPUT CN (AutoSuggest)
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 6
                 Label {
-                    text: "Certificato Associato (CN)"
+                    text: "Associate ID"
                     color: Theme.textDim
                     font.pixelSize: 12
                     font.bold: true
@@ -133,23 +127,20 @@ Dialog {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 42
                     suggestions: controller.availableCns
-                    placeholderText: "Cerca certificato..."
+                    placeholderText: "Search ID..."
                     text: oldCn
-
-                    // Al posto di Keys.onPressed usiamo la logica interna dell'AutoSuggestField
-                    // che abbiamo già perfezionato per la selezione rapida
                 }
             }
 
             Item { Layout.fillHeight: true }
 
-            // AREA BOTTONI
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 15
 
                 VpnButton {
-                    text: "Annulla"
+                    id: cancelBtn
+                    text: "Cancel"
                     Layout.fillWidth: true
                     Layout.preferredHeight: 42
                     onClicked: control.close()
@@ -157,12 +148,12 @@ Dialog {
 
                 VpnButton {
                     id: modifyBtn
-                    text: "Salva Modifiche"
+                    text: "Save Changes"
                     Layout.fillWidth: true
                     Layout.preferredHeight: 42
-                    // Abilitato se l'IP è formalmente corretto e almeno un campo è cambiato
                     enabled: ipInputField.acceptableInput && (ipInputField.text.trim() !== oldIp || cnSuggestField.text.trim() !== oldCn)
                     onClicked: control.submitUpdate()
+
                 }
             }
         }

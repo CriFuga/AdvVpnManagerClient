@@ -12,6 +12,7 @@ class AdvVpnItemModel : public QAbstractListModel
 public:
     enum Roles {
         KindRole = Qt::UserRole + 1,
+        IsHiddenRole = Qt::UserRole + 2,
         ValueRole,
         CnRole,
         TooltipRole,
@@ -27,6 +28,7 @@ public:
     Q_INVOKABLE void renameIpLocally(const QString &oldIp, const QString &newIp);
     Q_INVOKABLE void updateCnLocally(const QString &ip, const QString &newCn);
     Q_INVOKABLE void removeIpLocally(const QString &ipAddress);
+    Q_INVOKABLE void setItemHidden(const QString &ip, bool hide);
 
     void setIpToCn(const QHash<QString, QString> &map);
     void clear();

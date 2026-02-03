@@ -12,6 +12,7 @@ public:
 
     enum Roles {
         NameRole = Qt::UserRole + 1,
+        IsHiddenRole = Qt::UserRole + 2,
         ItemCountRole
     };
 
@@ -23,12 +24,12 @@ public:
     void removeGroupLocally(const QString &groupName);
     void addIpToGroupLocally(const QString &groupName, const QString &ipAddress);
     void raiseConflicts(const QStringList &msg);
+    void setGroupHidden(const QString &groupName, bool hide);
     AdvVpnGroup* groupAt(int row) const;
 
     QJsonArray toJsonArray() const;
 
 
-    // Gestione Mappa IP -> CN
     void setIpToCn(const QHash<QString, QString> &map);
     QHash<QString, QString> ipToCnMap() const { return m_ipToCn; }
     QString getCnForIp(const QString &ip) const;

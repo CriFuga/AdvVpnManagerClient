@@ -96,6 +96,21 @@ void AdvVpnItemModel::removeIpLocally(const QString &ipAddress)
     }
 }
 
+void AdvVpnItemModel::setItemHidden(const QString &ip, bool hide)
+{
+    if (!m_group) return;
+    const auto &items = m_group->items();
+
+    for (int i = 0; i < items.count(); ++i) {
+        if (items[i]->toString() == ip) {
+            items[i]->setHidden(hide); // Cambiamo solo il flag
+            QModelIndex idx = index(i, 0);
+            emit dataChanged(idx, idx, {IsHiddenRole}); // Notifica il proxy
+            break;
+        }
+    }
+}
+
 void AdvVpnItemModel::setIpToCn(const QHash<QString, QString> &map)
 {
     m_ipToCn = map;
@@ -142,6 +157,7 @@ QVariant AdvVpnItemModel::data(const QModelIndex &index, int role) const
         return "unknown";
     case ValueRole: return rawValue;
     case CnRole: return (item->kind() == AdvVpnItem::Kind::Address) ? m_ipToCn.value(rawValue, QString()) : QString();
+    case IsHiddenRole: return item->isHidden(); // <--- AGGIUNGI QUESTO
     case TooltipRole: return rawValue;
     case Qt::DisplayRole: return rawValue;
     default: return QVariant();
@@ -152,6 +168,7 @@ QHash<int, QByteArray> AdvVpnItemModel::roleNames() const
 {
     QHash<int, QByteArray> roles;
     roles[KindRole] = "kind";
+    roles[IsHiddenRole] = "isHidden"; // <--- AGGIUNGI QUESTO
     roles[ValueRole] = "value";
     roles[CnRole] = "cn";
     roles[TooltipRole] = "tooltip";

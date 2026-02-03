@@ -25,6 +25,9 @@ public:
     static AdvVpnItem* fromJson(const QJsonObject &json);
 
     bool contains(const QHostAddress &addr) const;
+    bool isHidden() const { return m_isHidden; }
+    void setHidden(bool hide) { m_isHidden = hide; }
+
 
     quint32 start() const { return m_start; } // inclusive, host order
     quint32 end()   const { return m_end; }   // inclusive, host order
@@ -40,6 +43,9 @@ protected:
     static quint32 maskFromPrefix(int prefix);
     static QString hostToString(quint32 hostOrder);
     static QStringView trimToken(QStringView v);
+
+private:
+    bool m_isHidden = false;
 };
 
 class AdvAddressItem final : public AdvVpnItem

@@ -43,7 +43,6 @@ Dialog {
             Layout.fillWidth: true
             spacing: 12
 
-            // Icona Identità/Certificato
             Rectangle {
                 width: 64; height: 64; radius: 32
                 color: Theme.darkMode ? "#333b82f6" : "#dbeafe"
@@ -59,7 +58,7 @@ Dialog {
             }
 
             Text {
-                text: "Conferma Assegnazione"
+                text: "Confirm Assignment"
                 color: Theme.textMain
                 font.pixelSize: 22
                 font.bold: true
@@ -73,7 +72,7 @@ Dialog {
             spacing: 8
 
             Text {
-                text: "Stai assegnando il certificato:"
+                text: "You are assigning the id:"
                 color: Theme.textDim
                 font.pixelSize: 14
                 Layout.fillWidth: true
@@ -91,7 +90,7 @@ Dialog {
             }
 
             Text {
-                text: "all'indirizzo IP: " + control.ipTarget
+                text: "to the IP: " + control.ipTarget
                 color: Theme.textDim
                 font.pixelSize: 13
                 Layout.fillWidth: true
@@ -104,7 +103,7 @@ Dialog {
             spacing: 15
 
             VpnButton {
-                text: "Annulla"
+                text: "Cancel"
                 Layout.fillWidth: true
                 Layout.preferredHeight: 45
                 onClicked: control.close()
@@ -112,7 +111,7 @@ Dialog {
 
             VpnButton {
                 id: confirmBtn
-                text: "Conferma"
+                text: "Confirm"
                 Layout.fillWidth: true
                 Layout.preferredHeight: 45
                 onClicked: {

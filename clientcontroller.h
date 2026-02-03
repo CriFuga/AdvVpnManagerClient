@@ -3,66 +3,66 @@
 
 #include <QObject>
 #include <QJsonObject>
+#include <qsortfilterproxymodel.h>
+#include "changesbuffermanager.h"
+#include "changesbuffermodel.h"
 
 class AdvVpnGroupModel;
 class AdvVpnItemModel;
-class AdvVpnSocket;
 
-struct PendingChange{
-
-    QString type;        // e.g., "ADD", "RENAME", "DELETE"
-    QString description; // e.g., "Rinomina gruppo 'A' in 'B'"
-    QVariantMap data;    // Stores specific details for the sync payload
-
-};
 
 class ClientController : public QObject
 {
     Q_OBJECT
+    // Manteniamo le proprietà per non rompere il QML
     Q_PROPERTY(QStringList availableCns READ availableCns NOTIFY availableCnsChanged)
-    Q_PROPERTY(QVariantList pendingChanges READ getPendingChangesForQml NOTIFY pendingChangesChanged)
-    Q_PROPERTY(int pendingChangesCount READ pendingChangesCount NOTIFY pendingChangesChanged)
+    Q_PROPERTY(int pendingChangesCount READ pendingChangesCount NOTIFY pendingChangesCountChanged)
 
 public:
-    explicit ClientController(AdvVpnGroupModel *groupModel,
-                              AdvVpnItemModel *itemModel,
-                              QObject *parent = nullptr);
+    explicit ClientController(AdvVpnGroupModel *groupModel, AdvVpnItemModel *itemModel, QObject *parent = nullptr);
 
-    void start();
+    ChangesBufferModel* syncModel() const { return m_syncModel; }
 
-    QStringList availableCns() const { return m_availableCns; }
-
+    // API PUBBLICHE (Invariate per il QML)
+    Q_INVOKABLE void start();
+    Q_INVOKABLE void sendIdUpdate(const QString &ip, const QString &newId); // Ex sendCnUpdate
     Q_INVOKABLE void addGroupRequest(const QString &groupName);
     Q_INVOKABLE void addIpRequest(const QString &groupName, const QString &ipAddress);
     Q_INVOKABLE void removeGroupRequest(const QString &groupName);
     Q_INVOKABLE void renameGroupRequest(const QString &oldName, const QString &newName);
     Q_INVOKABLE void requestRemoveIp(const QString &groupName, const QString &ipAddress);
-    Q_INVOKABLE void updateIpLocally(const QString &oldIp, const QString &newIp);
+    Q_INVOKABLE void updateIpRequest(const QString &oldIp, const QString &newIp); // Ex updateIpLocally
+    Q_INVOKABLE void selectGroupFromProxy(int proxyRow);
+
+    // Nuove API per il Sync
     Q_INVOKABLE void commitSync();
     Q_INVOKABLE void discardChanges();
-    Q_INVOKABLE void sendCnUpdate(const QString &ip, const QString &newCn);
 
+    QStringList availableCns() const { return m_availableCns; }
+    int pendingChangesCount() const { return m_changesBuffer->count(); }
 
-    void recordChange(const QString &type, const QString &desc, const QVariantMap &data);
-    QVariantList getPendingChangesForQml() const;
-    int pendingChangesCount() const { return m_pendingChanges.size(); }
+    void setGroupProxy(QSortFilterProxyModel* proxy) { m_groupProxy = proxy; }
 
 signals:
-    void errorsOccurred(const QStringList &messages);
     void availableCnsChanged();
-    void pendingChangesChanged();
+    void pendingChangesCountChanged();
+    void errorsOccurred(const QString &msg);
 
 private slots:
-
     void onSyncDataReceived(const QJsonObject &data);
 
 private:
+    void setupBufferConnections(); // Metodo per gestire la logica di Undo
+    void rollbackAction(const VpnAction &action);
+
+    QString actionTypeToString(VpnAction::Type type);
 
     AdvVpnGroupModel *m_groupModel;
     AdvVpnItemModel *m_itemModel;
+    ChangesBufferManager *m_changesBuffer;
+    ChangesBufferModel *m_syncModel; // Il modello per la ListView del Sync
     QStringList m_availableCns;
-    QList<PendingChange> m_pendingChanges;
-    QVariantList m_pendingChangesList; // Lista di QVariantMap per QML<
+    QSortFilterProxyModel* m_groupProxy = nullptr;
 };
 
-#endif // CLIENTCONTROLLER_H
+#endif
