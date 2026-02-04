@@ -167,7 +167,7 @@ QVariant AdvVpnItemModel::data(const QModelIndex &index, int role) const
         if (item->kind() == AdvVpnItem::Kind::Range) return "range";
         return "unknown";
     case ValueRole: return rawValue;
-    case CnRole: return (item->kind() == AdvVpnItem::Kind::Address) ? m_ipToCn.value(rawValue, QString()) : QString();
+    case CnRole: return m_ipToCn.value(rawValue, QString());
     case IsHiddenRole: return item->isHidden(); // <--- AGGIUNGI QUESTO
     case TooltipRole: return rawValue;
     case Qt::DisplayRole: return rawValue;

@@ -39,30 +39,29 @@ void ClientController::start() {
 void ClientController::sendIdUpdate(const QString &ip, const QString &newId) {
     if (ip.isEmpty()) return;
 
+    // FIX: Normalizziamo l'IP per assicurarci che la chiave nella mappa corrisponda a quella del modello
+    QString cleanIp = ip.trimmed();
+    QHostAddress address(cleanIp);
+    if (!address.isNull() && address.protocol() == QAbstractSocket::IPv4Protocol) {
+        cleanIp = address.toString(); // Converte es: "10.128.001.01" -> "10.128.1.1"
+    }
+
     QString cleanId = newId.trimmed();
 
-    // 1. Creiamo l'azione per il buffer di sincronizzazione (Cloud)
     VpnAction a;
     a.type = VpnAction::UpdateId;
-    a.targetId = ip;                 // L'IP a cui stiamo assegnando l'ID
-    a.newValue = cleanId;            // Il nuovo ID/CN
+    a.targetId = cleanIp; // Usiamo l'IP normalizzato
+    a.newValue = cleanId;
     a.groupId = m_itemModel->currentGroupName();
+    a.description = QString("Assegnato ID '%1' a %2").arg(cleanId.isEmpty() ? "Vuoto" : cleanId, cleanIp);
 
-    // Descrizione testuale che apparirà nella lista del Sync
-    a.description = QString("Assegnato ID '%1' a %2")
-                        .arg(cleanId.isEmpty() ? "Vuoto" : cleanId, ip);
-
-    // Aggiungiamo al buffer (questo farà apparire la riga nel SyncReviewDialog)
     m_changesBuffer->addAction(a);
 
-    // 2. Aggiorniamo il modello locale (per vedere subito il cambiamento nella lista IP)
-    // Assicurati che il tuo AdvVpnItemModel implementi updateCnLocally
-    m_itemModel->updateCnLocally(ip, cleanId);
+    // Aggiorniamo il modello. Ora la chiave cleanIp corrisponderà perfettamente a quella generata da AdvVpnItem::toString()
+    m_itemModel->updateCnLocally(cleanIp, cleanId);
 
-    // Emettiamo il segnale per aggiornare il badge delle modifiche pendenti
     emit pendingChangesCountChanged();
-
-    qDebug() << "✅ Azione ID registrata:" << ip << "->" << cleanId;
+    qDebug() << "✅ Azione ID registrata per IP:" << cleanIp << "->" << cleanId;
 }
 
 void ClientController::addGroupRequest(const QString &groupName) {

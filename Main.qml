@@ -134,6 +134,21 @@ ApplicationWindow {
         }
     }
 
+    ConfirmAssignIdDialog {
+            id: assignCnDialog
+            z: 2000 // Z-index alto per stare sopra a tutto
+
+            onConfirmed: (ip, cn) => {
+                // Chiamiamo la funzione del controller che abbiamo appena sistemato
+                controller.sendIdUpdate(ip, cn)
+
+                // Feedback utente (opzionale ma carino)
+                globalToast.text = "ID assegnato correttamente"
+                globalToast.showRequested = true
+                toastTimer.restart()
+            }
+        }
+
     SyncReviewDialog { id: syncReviewDialog; z: 200 }
 
     // --- LAYOUT PRINCIPALE ---
