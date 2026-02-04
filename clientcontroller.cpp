@@ -93,6 +93,17 @@ void ClientController::addGroupRequest(const QString &groupName) {
 void ClientController::addIpRequest(const QString &groupName, const QString &ipAddress) {
     if (groupName.isEmpty() || ipAddress.trimmed().isEmpty()) return;
 
+    QString cleanIp = ipAddress.trimmed();
+
+    if (m_itemModel->ipExistsInCurrentGroup(cleanIp)) {
+        qWarning() << "⛔ Bloccato duplicato per:" << cleanIp;
+
+        // Questo segnale attiva il PopupToast rosso nel Main.qml
+        emit errorsOccurred("L'indirizzo " + cleanIp + " è già presente in questo gruppo!");
+
+        return; // ESCI: non invia nulla al buffer e non sporca il server
+    }
+
     VpnAction a;
     a.type = VpnAction::AddIp;
     a.targetId = ipAddress.trimmed();
@@ -145,6 +156,19 @@ void ClientController::requestRemoveIp(const QString &groupName, const QString &
 
 void ClientController::updateIpRequest(const QString &oldIp, const QString &newIp) {
     if (oldIp == newIp || newIp.trimmed().isEmpty()) return;
+
+    QString cleanNewIp = newIp.trimmed();
+
+    // --- GUARDIANO PER LA MODIFICA ---
+    // Controlliamo se il NUOVO IP esiste già, escludendo quello VECCHIO
+    if (m_itemModel->ipExistsInCurrentGroup(cleanNewIp, oldIp)) {
+        qWarning() << "⛔ Modifica bloccata: l'IP target esiste già:" << cleanNewIp;
+
+        // Mostra lo stesso PopupToast degli altri errori
+        emit errorsOccurred("Impossibile modificare: l'indirizzo " + cleanNewIp + " è già presente!");
+
+        return; // Blocca la rinomina
+    }
 
     VpnAction a;
     a.type = VpnAction::UpdateIp;

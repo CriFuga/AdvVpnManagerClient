@@ -30,6 +30,7 @@ public:
     Q_INVOKABLE void removeIpLocally(const QString &ipAddress);
     Q_INVOKABLE void setItemHidden(const QString &ip, bool hide);
     Q_INVOKABLE QString getIpForCn(const QString &cn) const;
+    Q_INVOKABLE bool ipExistsInCurrentGroup(const QString &ip, const QString &excludeIp = "") const;
     void setIpToCn(const QHash<QString, QString> &map);
     void clear();
 

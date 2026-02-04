@@ -11,8 +11,8 @@ AdvVpnSocket::AdvVpnSocket(QObject *parent)
     m_instance = this;
 
     QSettings settings;
-    m_host = settings.value("server/host", "localhost").toString();
-    m_port = quint16(settings.value("server/port", 8080).toUInt());
+    m_host = "172.31.245.69";//settings.value("server/host", "localhost").toString();
+    m_port = 8080;//quint16(settings.value("server/port", 8080).toUInt());
 
     connect(this, &QWebSocket::connected, this, &AdvVpnSocket::onConnected);
     connect(this, &QWebSocket::disconnected, this, &AdvVpnSocket::onDisconnected);

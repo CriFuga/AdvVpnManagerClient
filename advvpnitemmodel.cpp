@@ -131,6 +131,26 @@ QString AdvVpnItemModel::getIpForCn(const QString &cn) const
     return m_ipToCn.key(cn.trimmed());
 }
 
+bool AdvVpnItemModel::ipExistsInCurrentGroup(const QString &ip, const QString &excludeIp) const {
+    if (!m_group) return false;
+
+    QString target = ip.trimmed();
+    const auto &items = m_group->items();
+
+    for (const auto *item : items) {
+        QString currentItemIp = item->toString();
+
+        if (!excludeIp.isEmpty() && currentItemIp == excludeIp) {
+            continue;
+        }
+
+        if (currentItemIp == target) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void AdvVpnItemModel::setIpToCn(const QHash<QString, QString> &map)
 {
     m_ipToCn = map;

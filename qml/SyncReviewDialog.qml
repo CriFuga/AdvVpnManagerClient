@@ -151,6 +151,15 @@ Popup {
                 text: "Chiudi"; Layout.fillWidth: true; Layout.preferredHeight: 48
                 onClicked: syncPopup.close()
             }
+            VpnButton{
+                text: "Discard"
+                Layout.fillWidth: true; Layout.preferredHeight: 48
+                enabled: controller.pendingChangesCount > 0
+                onClicked: {
+                    controller.discardChanges();
+                    syncPopup.close();
+                }
+            }
             VpnButton {
                 text: "Invia al Cloud (" + controller.pendingChangesCount + ")"
                 Layout.fillWidth: true; Layout.preferredHeight: 48
