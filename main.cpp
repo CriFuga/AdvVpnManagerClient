@@ -6,6 +6,7 @@
 #include "advvpngroupmodel.h"
 #include "advvpngroupproxymodel.h"
 #include "advvpnitemmodel.h"
+#include "advvpnitemproxymodel.h"
 #include "advvpnsocket.h"
 #include "clientcontroller.h"
 #include "thememanager.h"
@@ -31,11 +32,8 @@ int main(int argc, char *argv[])
     groupProxy->sort(0, Qt::AscendingOrder); // Ordinamento alfabetico automatico
 
     // 3. Configurazione Proxy Item (Lista IP centrale)
-    QSortFilterProxyModel *itemProxy = new QSortFilterProxyModel();
+    QSortFilterProxyModel *itemProxy = new AdvVpnItemProxyModel();
     itemProxy->setSourceModel(&itemModel);
-    itemProxy->setFilterRole(AdvVpnItemModel::IsHiddenRole); // Filtro per visibilità
-    itemProxy->setFilterFixedString("false");               // Mostra solo i non nascosti
-    itemProxy->setDynamicSortFilter(true);
 
     // 4. Inizializzazione Socket e Controller
     AdvVpnSocket socket;
@@ -45,13 +43,12 @@ int main(int argc, char *argv[])
     ThemeManager themeManager;
     QQmlApplicationEngine engine;
 
-    // 5. Registrazione Proprietà di Contesto
     engine.rootContext()->setContextProperty("Theme", &themeManager);
-
-    // NOTA: Passiamo i PROXY alla UI per gestire ricerca e invisibilità (Undo)
     engine.rootContext()->setContextProperty("groupModel", groupProxy);
+    engine.rootContext()->setContextProperty("itemModel", itemProxy); // <--- L'UNICO itemModel per la UI
+
     controller.setGroupProxy(groupProxy);
-    engine.rootContext()->setContextProperty("itemModel", itemProxy); // <--- RIMOSSA LA DOPPIA RIGA ERRATA
+    controller.setItemProxy(itemProxy);
 
     engine.rootContext()->setContextProperty("rawGroupModel", &groupModel);
     engine.rootContext()->setContextProperty("rawItemModel", &itemModel);

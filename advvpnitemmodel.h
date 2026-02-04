@@ -29,7 +29,6 @@ public:
     Q_INVOKABLE void updateCnLocally(const QString &ip, const QString &newCn);
     Q_INVOKABLE void removeIpLocally(const QString &ipAddress);
     Q_INVOKABLE void setItemHidden(const QString &ip, bool hide);
-
     void setIpToCn(const QHash<QString, QString> &map);
     void clear();
 
@@ -42,6 +41,7 @@ public:
 private:
     AdvVpnGroupModel *m_groupModel = nullptr;
     AdvVpnGroup *m_group = nullptr;
+    AdvVpnItemModel *m_items = nullptr;
     int m_groupIndex = -1; // <--- AGGIUNGI QUESTA RIGA
     QHash<QString, QString> m_ipToCn;
 };

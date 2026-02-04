@@ -39,15 +39,30 @@ void ClientController::start() {
 void ClientController::sendIdUpdate(const QString &ip, const QString &newId) {
     if (ip.isEmpty()) return;
 
+    QString cleanId = newId.trimmed();
+
+    // 1. Creiamo l'azione per il buffer di sincronizzazione (Cloud)
     VpnAction a;
     a.type = VpnAction::UpdateId;
-    a.targetId = ip;
-    a.newValue = newId.trimmed();
+    a.targetId = ip;                 // L'IP a cui stiamo assegnando l'ID
+    a.newValue = cleanId;            // Il nuovo ID/CN
     a.groupId = m_itemModel->currentGroupName();
-    a.description = QString("Assegnato ID %1 a %2").arg(newId.isEmpty() ? "Vuoto" : newId, ip);
 
-    m_changesBuffer->addAction(a); // Ottimizzazione automatica
-    m_itemModel->updateCnLocally(ip, newId.trimmed());
+    // Descrizione testuale che apparirà nella lista del Sync
+    a.description = QString("Assegnato ID '%1' a %2")
+                        .arg(cleanId.isEmpty() ? "Vuoto" : cleanId, ip);
+
+    // Aggiungiamo al buffer (questo farà apparire la riga nel SyncReviewDialog)
+    m_changesBuffer->addAction(a);
+
+    // 2. Aggiorniamo il modello locale (per vedere subito il cambiamento nella lista IP)
+    // Assicurati che il tuo AdvVpnItemModel implementi updateCnLocally
+    m_itemModel->updateCnLocally(ip, cleanId);
+
+    // Emettiamo il segnale per aggiornare il badge delle modifiche pendenti
+    emit pendingChangesCountChanged();
+
+    qDebug() << "✅ Azione ID registrata:" << ip << "->" << cleanId;
 }
 
 void ClientController::addGroupRequest(const QString &groupName) {
@@ -111,8 +126,9 @@ void ClientController::requestRemoveIp(const QString &groupName, const QString &
     a.groupId = groupName;
     a.description = QString("Rimosso IP %1 da %2").arg(ipAddress, groupName);
 
-    m_changesBuffer->addAction(a);
     m_itemModel->setItemHidden(ipAddress, true);
+    m_changesBuffer->addAction(a);
+    qDebug() << "❌ IP Nascosto e azione aggiunta:" << ipAddress << "nel gruppo" << groupName;
 }
 
 void ClientController::updateIpRequest(const QString &oldIp, const QString &newIp) {
@@ -186,6 +202,13 @@ void ClientController::discardChanges() {
     }
 }
 
+void ClientController::clearConflicts() {
+    if (!m_conflictMessages.isEmpty()) {
+        m_conflictMessages.clear();
+        emit conflictMessagesChanged();
+    }
+}
+
 // --- HELPERS E CALLBACKS ---
 
 QString ClientController::actionTypeToString(VpnAction::Type type) {
@@ -202,6 +225,21 @@ QString ClientController::actionTypeToString(VpnAction::Type type) {
 }
 
 void ClientController::onSyncDataReceived(const QJsonObject &data) {
+    if (data.contains("errors") || data.contains("conflicts")) {
+        QStringList newErrors;
+        QJsonArray errArray = data.contains("errors") ? data["errors"].toArray() : data["conflicts"].toArray();
+
+        for (const auto &err : errArray) {
+            newErrors.append(err.toString());
+        }
+
+        if (!newErrors.isEmpty()) {
+            m_conflictMessages = newErrors;
+            qDebug() << "📢 CONTROLLER: Conflitti rilevati!" << m_conflictMessages;
+            emit conflictMessagesChanged(); // Notifica il QML di mostrare il ConflictDialog
+            return; // Blocca l'aggiornamento dei modelli se i dati sono invalidi
+        }
+    }
     int currentIndex = m_itemModel->currentGroupIndex();
 
     // Aggiornamento Gruppi

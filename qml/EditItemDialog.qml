@@ -36,7 +36,16 @@ Dialog {
         let cleanCn = cnSuggestField.text.trim();
 
         if (ipInputField.acceptableInput) {
-            control.itemUpdated(oldIp, cleanIp, cleanCn);
+            // Se l'IP è cambiato, registra la modifica nel buffer
+            if (cleanIp !== oldIp) {
+                controller.updateIpRequest(oldIp, cleanIp);
+            }
+
+            // Se il CN (ID) è cambiato, registra anche quello
+            if (cleanCn !== oldCn) {
+                controller.sendIdUpdate(cleanIp, cleanCn);
+            }
+
             control.close();
         }
     }
@@ -64,13 +73,32 @@ Dialog {
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 8
-                Text {
-                    text: "Edit Assignment"
-                    color: Theme.textMain
-                    font.pixelSize: 22
-                    font.bold: true
+                RowLayout {
                     Layout.fillWidth: true
-                    horizontalAlignment: Text.AlignHCenter
+                    spacing: 12
+                    Layout.alignment: Qt.AlignHCenter
+
+                    Item {
+                        width: 32; height: 32
+                        Image {
+                            id: editIconHeader
+                            source: "qrc:/icons/edit.svg"
+                            anchors.fill: parent
+                            sourceSize: Qt.size(32, 32)
+                            visible: false
+                        }
+                        ColorOverlay {
+                            anchors.fill: editIconHeader
+                            source: editIconHeader
+                            color: Theme.accent
+                        }
+                    }
+                    Text {
+                        text: "Edit Assignment"
+                        color: Theme.textMain
+                        font.pixelSize: 22
+                        font.bold: true
+                    }
                 }
                 Text {
                     text: "You are editing the item:: " + oldIp
@@ -101,7 +129,7 @@ Dialog {
                     verticalAlignment: TextInput.AlignVCenter
 
                     validator: RegularExpressionValidator {
-                        regularExpression: /^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}$/
+                        regularExpression: /^([0-9\.\-\/]+)$/
                     }
 
                     background: Rectangle {
@@ -151,9 +179,10 @@ Dialog {
                     text: "Save Changes"
                     Layout.fillWidth: true
                     Layout.preferredHeight: 42
-                    enabled: ipInputField.acceptableInput && (ipInputField.text.trim() !== oldIp || cnSuggestField.text.trim() !== oldCn)
-                    onClicked: control.submitUpdate()
+                    enabled: ipInputField.acceptableInput &&
+                             (ipInputField.text.trim() !== oldIp || cnSuggestField.text.trim() !== oldCn)
 
+                    onClicked: control.submitUpdate()
                 }
             }
         }

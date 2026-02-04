@@ -17,6 +17,7 @@ class ClientController : public QObject
     // Manteniamo le proprietà per non rompere il QML
     Q_PROPERTY(QStringList availableCns READ availableCns NOTIFY availableCnsChanged)
     Q_PROPERTY(int pendingChangesCount READ pendingChangesCount NOTIFY pendingChangesCountChanged)
+    Q_PROPERTY(QStringList conflictMessages READ conflictMessages NOTIFY conflictMessagesChanged)
 
 public:
     explicit ClientController(AdvVpnGroupModel *groupModel, AdvVpnItemModel *itemModel, QObject *parent = nullptr);
@@ -33,18 +34,22 @@ public:
     Q_INVOKABLE void requestRemoveIp(const QString &groupName, const QString &ipAddress);
     Q_INVOKABLE void updateIpRequest(const QString &oldIp, const QString &newIp); // Ex updateIpLocally
     Q_INVOKABLE void selectGroupFromProxy(int proxyRow);
+    Q_INVOKABLE void clearConflicts();
 
     // Nuove API per il Sync
     Q_INVOKABLE void commitSync();
     Q_INVOKABLE void discardChanges();
 
     QStringList availableCns() const { return m_availableCns; }
+    QStringList conflictMessages() const { return m_conflictMessages; }
     int pendingChangesCount() const { return m_changesBuffer->count(); }
 
     void setGroupProxy(QSortFilterProxyModel* proxy) { m_groupProxy = proxy; }
+    void setItemProxy(QSortFilterProxyModel* proxy) { m_itemProxy = proxy; }
 
 signals:
     void availableCnsChanged();
+    void conflictMessagesChanged();
     void pendingChangesCountChanged();
     void errorsOccurred(const QString &msg);
 
@@ -54,6 +59,7 @@ private slots:
 private:
     void setupBufferConnections(); // Metodo per gestire la logica di Undo
     void rollbackAction(const VpnAction &action);
+    QStringList m_conflictMessages;
 
     QString actionTypeToString(VpnAction::Type type);
 
@@ -63,6 +69,7 @@ private:
     ChangesBufferModel *m_syncModel; // Il modello per la ListView del Sync
     QStringList m_availableCns;
     QSortFilterProxyModel* m_groupProxy = nullptr;
+    QSortFilterProxyModel* m_itemProxy = nullptr;
 };
 
 #endif

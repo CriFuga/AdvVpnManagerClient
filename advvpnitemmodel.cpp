@@ -67,7 +67,9 @@ void AdvVpnItemModel::renameIpLocally(const QString &oldIp, const QString &newIp
 
 void AdvVpnItemModel::updateCnLocally(const QString &ip, const QString &newCn) {
     if (!m_group) return;
+
     m_ipToCn.insert(ip, newCn);
+
     const auto &items = m_group->items();
     for (int i = 0; i < items.count(); ++i) {
         if (items[i]->toString() == ip) {
@@ -96,6 +98,8 @@ void AdvVpnItemModel::removeIpLocally(const QString &ipAddress)
     }
 }
 
+
+
 void AdvVpnItemModel::setItemHidden(const QString &ip, bool hide)
 {
     if (!m_group) return;
@@ -103,10 +107,17 @@ void AdvVpnItemModel::setItemHidden(const QString &ip, bool hide)
 
     for (int i = 0; i < items.count(); ++i) {
         if (items[i]->toString() == ip) {
-            items[i]->setHidden(hide); // Cambiamo solo il flag
+            items[i]->setHidden(hide);
+
             QModelIndex idx = index(i, 0);
-            emit dataChanged(idx, idx, {IsHiddenRole}); // Notifica il proxy
-            break;
+
+            emit dataChanged(idx, idx, {IsHiddenRole});
+
+            if (m_groupModel && m_groupIndex != -1) {
+                QModelIndex gIdx = m_groupModel->index(m_groupIndex, 0);
+                emit m_groupModel->dataChanged(gIdx, gIdx, {AdvVpnGroupModel::ItemCountRole});
+            }
+            return;
         }
     }
 }

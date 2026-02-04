@@ -73,6 +73,17 @@ ApplicationWindow {
     }
 
     // --- DIALOGS (Aggiornati con le nuove API del Controller) ---
+    ConflictDialog {
+        id: conflictDialog
+        anchors.fill: parent
+        z: 999 // Lo mette sopra a tutto il resto della UI
+
+        onDismiss: {
+            controller.clearConflictMessages()
+        }
+
+    }
+
     AddGroupDialog {
         id: addGroupDialog;
         z: 200;
@@ -179,11 +190,23 @@ ApplicationWindow {
                         model: itemModel
                         spacing: 12
                         clip: true
+
+                        remove: Transition {
+                            NumberAnimation { property: "opacity"; to: 0; duration: 200 }
+                            NumberAnimation { property: "scale"; to: 0.9; duration: 200 }
+                        }
+
+                        displaced: Transition {
+                            NumberAnimation { properties: "y"; duration: 250; easing.type: Easing.OutQuad }
+                        }
+
                         delegate: NetworkItemDelegate {
                             width: itemListView.width
                             ipValue: model.value
                             cn: model.cn
-                            onClicked: itemListView.currentIndex = index
+                            onClicked: {
+                                itemListView.currentIndex = index
+                            }
                         }
                     }
 

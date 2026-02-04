@@ -142,10 +142,9 @@ QVariant AdvVpnGroupModel::data(const QModelIndex &index, int role) const
     if (role == NameRole) return item->name();
     if (role == IsHiddenRole) return item->isHidden(); // <--- Corretto
     if (role == ItemCountRole) {
-        // Conta solo gli IP non nascosti per coerenza visiva
         int count = 0;
-        for (const auto *vpnItem : item->items()) {
-            if (!vpnItem->isHidden()) count++;
+        for (auto* item : m_groups[index.row()]->items()) {
+            if (!item->isHidden()) count++; // Conta solo i non nascosti
         }
         return count;
     }

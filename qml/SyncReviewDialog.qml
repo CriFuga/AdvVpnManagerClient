@@ -3,155 +3,161 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import Qt5Compat.GraphicalEffects
 
-Dialog {
-    id: syncReviewDialog
-    title: "Revisione Sincronizzazione"
+Popup {
+    id: syncPopup
+    anchors.centerIn: Overlay.overlay
+    width: Math.min(650, parent.width * 0.9)
+    height: Math.min(550, parent.height * 0.8)
     modal: true
-    anchors.centerIn: parent
-    width: 600
-    height: 500
-    standardButtons: Dialog.NoButton
+    focus: true
+
+    enter: Transition {
+        NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 200 }
+        NumberAnimation { property: "scale"; from: 0.9; to: 1.0; duration: 200; easing.type: Easing.OutBack }
+    }
+
+    Overlay.modal: Rectangle {
+        color: "#AA000000"
+    }
 
     background: Rectangle {
-        color: "#1e293b"
-        radius: 16
-        border.color: "#334155"
+        radius: 24
+        color: Theme.cardBackground
+        border.color: Theme.border
+        border.width: 1
     }
 
     contentItem: ColumnLayout {
-        spacing: 20
+        spacing: 25
+        anchors.margins: 10
 
-        // --- HEADER ---
-        ColumnLayout {
-            Layout.fillWidth: true
-            Layout.margins: 10
-            spacing: 4
-            Text {
-                text: "Sincronizzazione Cloud"
-                color: "white"
-                font.pixelSize: 20; font.bold: true
+        // Header con la tua icona Cloud
+        RowLayout {
+            spacing: 15
+            Item {
+                width: 40; height: 40
+                Image {
+                    id: cloudIcon
+                    source: "qrc:/icons/cloud_on.svg"
+                    anchors.fill: parent
+                    sourceSize: Qt.size(40, 40)
+                    visible: false
+                }
+                ColorOverlay {
+                    anchors.fill: cloudIcon
+                    source: cloudIcon
+                    color: Theme.accent
+                }
             }
-            Text {
-                text: syncModel.rowCount + " modifiche in attesa"
-                color: "#94a3b8"; font.pixelSize: 13
+            ColumnLayout {
+                spacing: 2
+                Text {
+                    text: "Sincronizzazione Cloud"
+                    font.pixelSize: 24; font.bold: true
+                    color: Theme.textMain
+                }
+                Text {
+                    text: controller.pendingChangesCount + " modifiche registrate nel buffer"
+                    font.pixelSize: 14; color: Theme.textDim
+                }
             }
         }
 
-        // --- LISTA MODIFICHE ---
         ListView {
             id: syncListView
-            Layout.fillWidth: true
-            Layout.fillHeight: true
+            Layout.fillWidth: true; Layout.fillHeight: true
             model: syncModel
-            clip: true
-            spacing: 12
+            spacing: 12; clip: true
 
             delegate: Rectangle {
-                // Rimosso l'ancoraggio errato che causava il crash
-                width: syncListView.width - 20
-                anchors.horizontalCenter: syncListView.horizontalCenter // <--- Usa l'ID della ListView, non 'parent'
-
-                // Altezza dinamica corretta
-                implicitHeight: itemLayout.implicitHeight + 24
-                radius: 12
-                color: "#0f172a"
-                border.color: isGroupAction ? "#3b82f6" : "#334155"
+                width: syncListView.width; height: 75; radius: 16
+                color: Theme.darkMode ? "#1e293b" : "#f1f5f9"
+                border.color: Theme.border
 
                 RowLayout {
-                    id: itemLayout
-                    // Corretto: Usiamo il sistema di layout invece delle anchors interne
-                    anchors.fill: parent
-                    anchors.margins: 12
-                    spacing: 15
+                    anchors.fill: parent; anchors.margins: 15; spacing: 15
 
-                    // Icona con ColorOverlay
+                    // Icona dinamica: usa bin.svg per le eliminazioni
                     Item {
-                        Layout.preferredWidth: 32
-                        Layout.preferredHeight: 32
-                        Layout.alignment: Qt.AlignVCenter
+                        width: 32; height: 32
                         Image {
                             id: actionIcon
+                            source: model.type === 5 ? "qrc:/icons/bin.svg" : "qrc:/icons/edit.svg"
                             anchors.fill: parent
                             sourceSize: Qt.size(32, 32)
-                            source: {
-                                if (isGroupAction) return "qrc:/icons/group.svg"
-                                if (type === 1 || type === 4) return "qrc:/icons/bin.svg"
-                                if (type === 2 || type === 6) return "qrc:/icons/edit.svg"
-                                return "qrc:/icons/info.svg"
-                            }
                             visible: false
                         }
                         ColorOverlay {
-                            anchors.fill: actionIcon; source: actionIcon
-                            color: (type === 1 || type === 4) ? "#ef4444" :
-                                   (type === 0 || type === 3) ? "#10b981" : "#3b82f6"
+                            anchors.fill: actionIcon
+                            source: actionIcon
+                            color: model.type === 5 ? "#ef4444" : Theme.accent
                         }
                     }
 
-                    // Testo con WordWrap
                     ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 2
+                        Layout.fillWidth: true; spacing: 2
                         Text {
-                            text: description
-                            color: "white"; font.pixelSize: 14; font.bold: true
-                            wrapMode: Text.WordWrap
-                            Layout.fillWidth: true
+                            text: model.description; color: Theme.textMain
+                            font.bold: true; font.pixelSize: 14; elide: Text.ElideRight
                         }
                         Text {
-                            text: "Target: " + targetId
-                            color: "#64748b"; font.pixelSize: 11
+                            text: "Target ID: " + model.targetId; color: Theme.textDim
+                            font.pixelSize: 12
                         }
                     }
 
-                    // Tasto Undo
-                    Button {
-                        id: undoBtn
-                        Layout.preferredWidth: 32
-                        Layout.preferredHeight: 32
+                    // Il tuo tasto Undo con l'icona undo.svg
+                    VpnButton {
+                        Layout.preferredWidth: 36; Layout.preferredHeight: 36
                         onClicked: syncModel.undo(index)
-                        background: Rectangle {
-                            color: undoBtn.hovered ? "#1e293b" : "transparent"
-                            radius: 16
-                        }
-                        contentItem: Text {
-                            text: "↺"
-                            color: undoBtn.hovered ? "#3b82f6" : "#94a3b8"
-                            font.pixelSize: 20; horizontalAlignment: Text.AlignHCenter
+                        contentItem: Item {
+                            Image {
+                                id: undoImg
+                                source: "qrc:/icons/undo.svg"
+                                anchors.centerIn: parent
+                                width: 18; height: 18
+                                visible: false
+                            }
+                            ColorOverlay {
+                                anchors.fill: undoImg; source: undoImg
+                                color: Theme.textMain
+                            }
                         }
                     }
                 }
             }
 
-            // Placeholder
-            Text {
-                Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
-                Layout.fillWidth: true
-                text: "Tutto sincronizzato.\nNessuna modifica pendente."
-                color: "#475569"
-                font.pixelSize: 16
-                horizontalAlignment: Text.AlignHCenter
-                visible: syncModel.rowCount === 0
+            // Placeholder quando non ci sono modifiche
+            ColumnLayout {
+                anchors.centerIn: parent
+                visible: syncListView.count === 0
+                spacing: 10
+                Image {
+                    source: "qrc:/icons/check.svg"
+                    Layout.alignment: Qt.AlignHCenter
+                    sourceSize: Qt.size(48, 48)
+                }
+                Label {
+                    text: "Tutto sincronizzato.\nNessuna modifica pendente."
+                    horizontalAlignment: Text.AlignHCenter
+                    color: Theme.textDim; font.pixelSize: 16
+                }
             }
         }
 
-        // --- FOOTER ---
         RowLayout {
-            Layout.fillWidth: true
-            Layout.margins: 15
-            spacing: 15
-            Button {
-                text: "Chiudi"; Layout.fillWidth: true; Layout.preferredHeight: 45
-                onClicked: syncReviewDialog.reject()
+            spacing: 15; Layout.fillWidth: true
+            VpnButton {
+                text: "Chiudi"; Layout.fillWidth: true; Layout.preferredHeight: 48
+                onClicked: syncPopup.close()
             }
-            Button {
-                id: syncBtn
-                text: "Invia al Cloud (" + syncModel.rowCount + ")"
-                Layout.fillWidth: true; Layout.preferredHeight: 45
-                enabled: syncModel.rowCount > 0
+            VpnButton {
+                text: "Invia al Cloud (" + controller.pendingChangesCount + ")"
+                Layout.fillWidth: true; Layout.preferredHeight: 48
+                enabled: controller.pendingChangesCount > 0
                 onClicked: {
-                    controller.commitSync()
-                    syncReviewDialog.accept()
+                    controller.commitSync();
+                    syncPopup.close();
                 }
             }
         }

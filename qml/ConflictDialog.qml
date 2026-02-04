@@ -8,9 +8,9 @@ Rectangle {
 
     anchors.fill: parent
     color: "#CC000000"
-    visible: messages && messages.length > 0
+    visible: controller.conflictMessages.length > 0
 
-    property var messages: []
+    property var messages: controller.conflictMessages
     signal dismiss()
 
     Rectangle {
@@ -78,7 +78,7 @@ Rectangle {
                 id: conflictList
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                model: root.messages
+                model: controller.conflictMessages
                 clip: true
                 spacing: 10
 
