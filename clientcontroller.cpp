@@ -39,31 +39,44 @@ void ClientController::start() {
 void ClientController::sendIdUpdate(const QString &ip, const QString &newId) {
     if (ip.isEmpty()) return;
 
-    // FIX: Normalizziamo l'IP per assicurarci che la chiave nella mappa corrisponda a quella del modello
+    // 1. Normalizzazione (già presente nel tuo codice)
     QString cleanIp = ip.trimmed();
     QHostAddress address(cleanIp);
     if (!address.isNull() && address.protocol() == QAbstractSocket::IPv4Protocol) {
-        cleanIp = address.toString(); // Converte es: "10.128.001.01" -> "10.128.1.1"
+        cleanIp = address.toString();
     }
 
     QString cleanId = newId.trimmed();
 
+    // 2. --- IL GUARDIANO (MANCANTE NEL TUO FILE) ---
+    if (!cleanId.isEmpty()) {
+        QString ownerIp = m_itemModel->getIpForCn(cleanId);
+
+        // Se l'ID è già di qualcun altro, fermiamo tutto QUI
+        if (!ownerIp.isEmpty() && ownerIp != cleanIp) {
+            qWarning() << "⛔ ID duplicato bloccato:" << cleanId;
+
+            // Questo segnale attiva il toast rosso in Main.qml
+            emit errorsOccurred("L'ID '" + cleanId + "' è già usato dall'IP " + ownerIp);
+
+            return; // 🛑 ESCE: non aggiorna il modello, non scrive nel buffer
+        }
+    }
+
+    // 3. Procede solo se l'ID è univoco o vuoto
     VpnAction a;
     a.type = VpnAction::UpdateId;
-    a.targetId = cleanIp; // Usiamo l'IP normalizzato
+    a.targetId = cleanIp;
     a.newValue = cleanId;
     a.groupId = m_itemModel->currentGroupName();
     a.description = QString("Assegnato ID '%1' a %2").arg(cleanId.isEmpty() ? "Vuoto" : cleanId, cleanIp);
 
     m_changesBuffer->addAction(a);
+    m_itemModel->updateCnLocally(cleanIp, cleanId); // Aggiorna la lista principale
 
-    // Aggiorniamo il modello. Ora la chiave cleanIp corrisponderà perfettamente a quella generata da AdvVpnItem::toString()
-    m_itemModel->updateCnLocally(cleanIp, cleanId);
-
+    emit availableCnsChanged(); // Aggiorna i suggerimenti live
     emit pendingChangesCountChanged();
-    qDebug() << "✅ Azione ID registrata per IP:" << cleanIp << "->" << cleanId;
 }
-
 void ClientController::addGroupRequest(const QString &groupName) {
     QString name = groupName.trimmed();
     if (name.isEmpty()) return;
@@ -273,9 +286,16 @@ void ClientController::onSyncDataReceived(const QJsonObject &data) {
     }
 
     m_itemModel->setIpToCn(serverCnMap);
-    serverCnsList.sort();
-    m_availableCns = serverCnsList;
+    QStringList filteredCns;
+    for(const QString &cn : serverCnsList) {
+        // Aggiunge ai suggerimenti solo se l'ID non è associato ad alcun IP
+        if (m_itemModel->getIpForCn(cn).isEmpty()) {
+            filteredCns.append(cn);
+        }
+    }
 
+    filteredCns.sort();
+    m_availableCns = filteredCns;
     emit availableCnsChanged();
     qInfo() << "Database sincronizzato con successo dal server.";
 }

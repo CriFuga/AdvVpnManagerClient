@@ -86,7 +86,7 @@ Dialog {
                 horizontalAlignment: Text.AlignHCenter
 
                 validator: RegularExpressionValidator {
-                    regularExpression: /^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}$/
+                    regularExpression: /^([0-9\.\-\/]+)$/
                 }
 
                 background: Rectangle {

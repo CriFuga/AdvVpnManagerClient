@@ -122,6 +122,15 @@ void AdvVpnItemModel::setItemHidden(const QString &ip, bool hide)
     }
 }
 
+// Aggiungi in advvpnitemmodel.cpp
+QString AdvVpnItemModel::getIpForCn(const QString &cn) const
+{
+    if (cn.trimmed().isEmpty()) return QString();
+
+    // Cerca l'IP (chiave) che ha quel CN (valore) nella hash map
+    return m_ipToCn.key(cn.trimmed());
+}
+
 void AdvVpnItemModel::setIpToCn(const QHash<QString, QString> &map)
 {
     m_ipToCn = map;

@@ -136,13 +136,11 @@ ApplicationWindow {
 
     ConfirmAssignIdDialog {
             id: assignCnDialog
-            z: 2000 // Z-index alto per stare sopra a tutto
+            z: 2000
 
             onConfirmed: (ip, cn) => {
-                // Chiamiamo la funzione del controller che abbiamo appena sistemato
                 controller.sendIdUpdate(ip, cn)
 
-                // Feedback utente (opzionale ma carino)
                 globalToast.text = "ID assegnato correttamente"
                 globalToast.showRequested = true
                 toastTimer.restart()

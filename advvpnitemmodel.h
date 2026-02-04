@@ -29,6 +29,7 @@ public:
     Q_INVOKABLE void updateCnLocally(const QString &ip, const QString &newCn);
     Q_INVOKABLE void removeIpLocally(const QString &ipAddress);
     Q_INVOKABLE void setItemHidden(const QString &ip, bool hide);
+    Q_INVOKABLE QString getIpForCn(const QString &cn) const;
     void setIpToCn(const QHash<QString, QString> &map);
     void clear();
 
