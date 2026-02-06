@@ -19,25 +19,20 @@ int main(int argc, char *argv[])
 
     QGuiApplication app(argc, argv);
 
-    // 1. Inizializzazione Modelli Sorgente
     AdvVpnGroupModel groupModel;
     AdvVpnItemModel itemModel;
     itemModel.setGroupModel(&groupModel);
 
-    // 2. Configurazione Proxy Gruppi (Sidebar)
     AdvVpnGroupProxyModel *groupProxy = new AdvVpnGroupProxyModel();
     groupProxy->setSourceModel(&groupModel);
     groupProxy->setDynamicSortFilter(true);
     groupProxy->setFilterCaseSensitivity(Qt::CaseInsensitive);
-    groupProxy->sort(0, Qt::AscendingOrder); // Ordinamento alfabetico automatico
+    groupProxy->sort(0, Qt::AscendingOrder);
 
-    // 3. Configurazione Proxy Item (Lista IP centrale)
     QSortFilterProxyModel *itemProxy = new AdvVpnItemProxyModel();
     itemProxy->setSourceModel(&itemModel);
 
-    // 4. Inizializzazione Socket e Controller
     AdvVpnSocket socket;
-    // Passiamo i modelli reali al controller (lui deve poter modificare tutto)
     ClientController controller(&groupModel, &itemModel);
 
     ThemeManager themeManager;
@@ -45,7 +40,7 @@ int main(int argc, char *argv[])
 
     engine.rootContext()->setContextProperty("Theme", &themeManager);
     engine.rootContext()->setContextProperty("groupModel", groupProxy);
-    engine.rootContext()->setContextProperty("itemModel", itemProxy); // <--- L'UNICO itemModel per la UI
+    engine.rootContext()->setContextProperty("itemModel", itemProxy);
 
     controller.setGroupProxy(groupProxy);
     controller.setItemProxy(itemProxy);

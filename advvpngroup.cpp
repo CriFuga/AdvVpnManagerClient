@@ -82,3 +82,18 @@ QJsonObject AdvVpnGroup::toJson() const
 
     return obj;
 }
+
+bool AdvVpnGroup::isHidden() const
+{
+    return m_isHidden;
+}
+
+void AdvVpnGroup::setHidden(bool hidden)
+{
+    m_isHidden = hidden;
+}
+
+void AdvVpnGroup::setName(const QString &newName)
+{
+    m_name = newName;
+}

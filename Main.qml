@@ -70,6 +70,12 @@ ApplicationWindow {
             globalToast.showRequested = true
             toastTimer.restart()
         }
+
+        function onStarted(msg) {
+            globalToast.text = msg
+            globalToast.showRequested = true
+            toastTimer.restart()
+        }
     }
 
     // --- DIALOGS (Aggiornati con le nuove API del Controller) ---

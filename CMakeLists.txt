@@ -53,10 +53,10 @@ qt_add_qml_module(appADVVpnManagerClient
         vpnaction.h vpnaction.cpp
         changesbuffermanager.h changesbuffermanager.cpp
         changesbuffermodel.h changesbuffermodel.cpp
+        advvpngroupproxymodel.h advvpngroupproxymodel.cpp
+        advvpnitemproxymodel.h advvpnitemproxymodel.cpp
     RESOURCES
         Resources.qrc
-        SOURCES advvpngroupproxymodel.h advvpngroupproxymodel.cpp
-        SOURCES advvpnitemproxymodel.h advvpnitemproxymodel.cpp
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.

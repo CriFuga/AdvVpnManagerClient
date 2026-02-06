@@ -8,8 +8,6 @@
 class AdvVpnSocket : public QWebSocket
 {
     Q_OBJECT
-    //QML_ELEMENT
-    //QML_SINGLETON
     Q_PROPERTY(bool connected READ isConnected NOTIFY connectionStatusChanged)
     Q_PROPERTY(bool isConnected READ isConnected NOTIFY connectionStatusChanged)
 
@@ -17,17 +15,16 @@ public:
     explicit AdvVpnSocket(QObject *parent = nullptr);
     ~AdvVpnSocket();
 
+    static AdvVpnSocket *instance();
+
     Q_INVOKABLE void openConnection();
     Q_INVOKABLE void sendJson(const QJsonObject &json);
 
-    static AdvVpnSocket *instance();
-
-    bool isConnected() const { return m_connected; }
+    bool isConnected() const;
 
 signals:
     void initDataRequested();
     void syncDataReceived(const QJsonObject &data);
-
     void connectionStatusChanged();
 
 private slots:

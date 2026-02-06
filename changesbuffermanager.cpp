@@ -1,50 +1,33 @@
 #include "changesbuffermanager.h"
 #include <QDebug>
 
+
+// Constructor
 ChangesBufferManager::ChangesBufferManager(QObject *parent)
     : QObject(parent)
 {
 }
 
+
+// Adds a new action to the buffer and applies optimization logic to handle redundant steps
 void ChangesBufferManager::addAction(const VpnAction &actionInput)
 {
     VpnAction finalAction = actionInput;
 
-    // --- FIX LOGICA: Rinomina seguita da Eliminazione ---
-    // Se l'utente rinomina A -> B e poi cancella B, nel buffer deve rimanere solo "Cancella A".
     if (finalAction.type == VpnAction::DeleteIp) {
-
-        // Scorriamo il buffer al contrario per trovare la storia di questo IP
         for (int i = m_buffer.count() - 1; i >= 0; --i) {
             const VpnAction &existing = m_buffer.at(i);
-
-            // Caso 1: Troviamo una Rinomina (UpdateIp) che ha generato l'IP che stiamo cancellando
-            // Es: existing è "A -> B", finalAction è "Delete B"
             if (existing.type == VpnAction::UpdateIp && existing.newValue == finalAction.targetId) {
-
-                qDebug() << "🔄 Merge Delete su Rinomina: Trovata sequenza [Rinomina -> Elimina]. Ripristino target originale:" << existing.targetId;
-
-                // 1. Reindirizziamo la cancellazione all'IP originale (A)
                 finalAction.targetId = existing.targetId;
-                finalAction.description = QString("Rimosso IP %1").arg(existing.targetId);
-
-                // 2. Rimuoviamo l'azione di rinomina dal buffer (perché è stata annullata dall'eliminazione)
+                finalAction.description = QString("Removed IP %1").arg(existing.targetId);
                 m_buffer.removeAt(i);
-
-                // Nota: continuiamo il ciclo nel caso ci siano altre azioni intermedie o catene di rinomine
                 continue;
             }
-
-            // Caso 2: Pulizia di azioni intermedie fatte sull'IP provvisorio (B)
-            // Se avevamo assegnato un ID a B prima di cancellarlo, quell'azione è inutile ora
             if (existing.targetId == actionInput.targetId && existing.type != VpnAction::UpdateIp) {
                 m_buffer.removeAt(i);
             }
         }
     }
-
-    // --- Ottimizzazione Standard ---
-    // Rimuove duplicati o sovrascritture (es. due cambi di ID sullo stesso IP)
     optimizeBuffer(finalAction);
 
     m_buffer.append(finalAction);
@@ -52,6 +35,7 @@ void ChangesBufferManager::addAction(const VpnAction &actionInput)
     emit countChanged();
 }
 
+// Removes a specific action from the buffer and triggers a rollback signal
 void ChangesBufferManager::undoAction(int index)
 {
     if (index < 0 || index >= m_buffer.count())
@@ -64,6 +48,7 @@ void ChangesBufferManager::undoAction(int index)
     emit countChanged();
 }
 
+// Removes all pending actions belonging to a specific group
 void ChangesBufferManager::undoGroupActions(const QString &groupName)
 {
     for (int i = m_buffer.count() - 1; i >= 0; --i) {
@@ -75,9 +60,9 @@ void ChangesBufferManager::undoGroupActions(const QString &groupName)
     emit countChanged();
 }
 
+// Removes actions related to a group (usually called when the entire group is deleted)
 void ChangesBufferManager::removeActionsRelatedToGroup(const QString &groupName)
 {
-    // Usata quando si cancella un intero gruppo: rimuove le azioni pendenti di quel gruppo
     for (int i = m_buffer.count() - 1; i >= 0; --i) {
         if (m_buffer[i].groupId == groupName) {
             m_buffer.removeAt(i);
@@ -87,6 +72,7 @@ void ChangesBufferManager::removeActionsRelatedToGroup(const QString &groupName)
     emit countChanged();
 }
 
+// Clears the entire buffer
 void ChangesBufferManager::clear()
 {
     m_buffer.clear();
@@ -94,33 +80,28 @@ void ChangesBufferManager::clear()
     emit countChanged();
 }
 
+// Returns the full list of actions currently in the buffer
 QList<VpnAction> ChangesBufferManager::buffer() const
 {
     return m_buffer;
 }
 
+// Returns the number of pending actions
 int ChangesBufferManager::count() const
 {
     return m_buffer.count();
 }
 
+// Removes pending actions that are rendered obsolete by a new incoming action
 void ChangesBufferManager::optimizeBuffer(const VpnAction &newAction)
 {
-    // Scorre il buffer al contrario per rimuovere azioni rese obsolete dalla nuova azione
     for (int i = m_buffer.count() - 1; i >= 0; --i) {
         const VpnAction &existing = m_buffer.at(i);
-
-        // Se l'azione riguarda lo stesso target (IP)
         if (existing.targetId == newAction.targetId) {
-
-            // Se la nuova azione è DELETE, vince su tutto (UpdateId, UpdateGroup, ecc.)
-            // Nota: La rinomina è gestita separatamente in addAction
             if (newAction.type == VpnAction::DeleteIp) {
                 m_buffer.removeAt(i);
                 continue;
             }
-
-            // Se stiamo aggiornando l'ID e c'era già un aggiornamento ID pendente, teniamo solo l'ultimo
             if (newAction.type == VpnAction::UpdateId && existing.type == VpnAction::UpdateId) {
                 m_buffer.removeAt(i);
                 continue;

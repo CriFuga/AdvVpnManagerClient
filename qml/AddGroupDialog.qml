@@ -28,11 +28,13 @@ Dialog {
     footer: null
 
     signal groupAdded(string name)
+    signal duplicatedName(string nameDup)
 
     function submit() {
         let name = groupNameInput.text.trim()
         if (name.length > 0) {
             control.groupAdded(name)
+            control.duplicatedName((name))
             groupNameInput.clear()
             control.close()
         }

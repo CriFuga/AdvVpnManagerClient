@@ -8,38 +8,54 @@
 #include <QJsonDocument>
 #include <QDebug>
 
+// Initializes managers, models and connects core signals for buffer and networking
 ClientController::ClientController(AdvVpnGroupModel *groupModel, AdvVpnItemModel *itemModel, QObject *parent)
     : QObject(parent), m_groupModel(groupModel), m_itemModel(itemModel)
 {
-    // Inizializziamo il buffer e il modello per la UI del Sync
     m_changesBuffer = new ChangesBufferManager(this);
     m_syncModel = new ChangesBufferModel(m_changesBuffer, this);
 
     setupBufferConnections();
 
-    // Colleghiamo il conteggio dei cambiamenti per il badge della UI
     connect(m_changesBuffer, &ChangesBufferManager::countChanged, this, &ClientController::pendingChangesCountChanged);
+
+    connect(m_groupModel, &AdvVpnGroupModel::conflictsDetected, this, [this](const QStringList &errors){
+        if (!errors.isEmpty()) {
+            emit errorsOccurred(errors.first());
+        }
+    });
 
     auto socket = AdvVpnSocket::instance();
     if (socket) {
         connect(socket, &AdvVpnSocket::syncDataReceived, this, &ClientController::onSyncDataReceived);
     }
+
+    connect(socket, &AdvVpnSocket::connectionStatusChanged, this, [this, socket](){
+        if (socket->isConnected()) {
+            emit started("Connected to VPN server.");
+        } else {
+            emit errorsOccurred("Connection to VPN server lost.");
+        }
+    });
 }
 
-// --- GESTIONE CONNESSIONE ---
-
+// Triggers the socket connection to the server
 void ClientController::start() {
     if (auto socket = AdvVpnSocket::instance()) {
         socket->openConnection();
     }
 }
 
-// --- API RICHIESTE (SCRITTURA NEL BUFFER) ---
+// Configures internal signal-slot mapping for the changes buffer
+void ClientController::setupBufferConnections() {
+    connect(m_changesBuffer, &ChangesBufferManager::countChanged, this, &ClientController::pendingChangesCountChanged);
+    connect(m_changesBuffer, &ChangesBufferManager::actionUndone, this, &ClientController::rollbackAction);
+}
 
+// Validates and stages an ID (CN) update for a specific IP
 void ClientController::sendIdUpdate(const QString &ip, const QString &newId) {
     if (ip.isEmpty()) return;
 
-    // 1. Normalizzazione (già presente nel tuo codice)
     QString cleanIp = ip.trimmed();
     QHostAddress address(cleanIp);
     if (!address.isNull() && address.protocol() == QAbstractSocket::IPv4Protocol) {
@@ -48,72 +64,70 @@ void ClientController::sendIdUpdate(const QString &ip, const QString &newId) {
 
     QString cleanId = newId.trimmed();
 
-    // 2. --- IL GUARDIANO (MANCANTE NEL TUO FILE) ---
     if (!cleanId.isEmpty()) {
         QString ownerIp = m_itemModel->getIpForCn(cleanId);
 
-        // Se l'ID è già di qualcun altro, fermiamo tutto QUI
         if (!ownerIp.isEmpty() && ownerIp != cleanIp) {
-            qWarning() << "⛔ ID duplicato bloccato:" << cleanId;
-
-            // Questo segnale attiva il toast rosso in Main.qml
-            emit errorsOccurred("L'ID '" + cleanId + "' è già usato dall'IP " + ownerIp);
-
-            return; // 🛑 ESCE: non aggiorna il modello, non scrive nel buffer
+            emit errorsOccurred("ID '" + cleanId + "' is already assigned to IP " + ownerIp);
+            return;
         }
     }
 
-    // 3. Procede solo se l'ID è univoco o vuoto
     VpnAction a;
     a.type = VpnAction::UpdateId;
     a.targetId = cleanIp;
     a.newValue = cleanId;
     a.groupId = m_itemModel->currentGroupName();
-    a.description = QString("Assegnato ID '%1' a %2").arg(cleanId.isEmpty() ? "Vuoto" : cleanId, cleanIp);
+    a.description = QString("Assigned ID '%1' to %2").arg(cleanId.isEmpty() ? "Empty" : cleanId, cleanIp);
 
     m_changesBuffer->addAction(a);
-    m_itemModel->updateCnLocally(cleanIp, cleanId); // Aggiorna la lista principale
+    m_itemModel->updateCnLocally(cleanIp, cleanId);
 
-    emit availableCnsChanged(); // Aggiorna i suggerimenti live
+    emit availableCnsChanged();
     emit pendingChangesCountChanged();
 }
+
+// Validates name uniqueness and stages a new group creation
 void ClientController::addGroupRequest(const QString &groupName) {
     QString name = groupName.trimmed();
     if (name.isEmpty()) return;
 
+    if (m_groupModel->duplicateNameExists(name)) {
+        emit errorsOccurred("A group named '" + name + "' already exists");
+        return;
+    }
+
     VpnAction a;
     a.type = VpnAction::CreateGroup;
     a.targetId = name;
-    a.description = "Nuovo gruppo: " + name;
+    a.description = "New group: " + name;
 
     m_changesBuffer->addAction(a);
     m_groupModel->addGroupLocally(name);
 }
 
+// Validates IP uniqueness and stages adding an IP to a group
 void ClientController::addIpRequest(const QString &groupName, const QString &ipAddress) {
     if (groupName.isEmpty() || ipAddress.trimmed().isEmpty()) return;
 
     QString cleanIp = ipAddress.trimmed();
 
     if (m_itemModel->ipExistsInCurrentGroup(cleanIp)) {
-        qWarning() << "⛔ Bloccato duplicato per:" << cleanIp;
-
-        // Questo segnale attiva il PopupToast rosso nel Main.qml
-        emit errorsOccurred("L'indirizzo " + cleanIp + " è già presente in questo gruppo!");
-
-        return; // ESCI: non invia nulla al buffer e non sporca il server
+        emit errorsOccurred("The address " + cleanIp + " is already present in this group!");
+        return;
     }
 
     VpnAction a;
     a.type = VpnAction::AddIp;
-    a.targetId = ipAddress.trimmed();
+    a.targetId = cleanIp;
     a.groupId = groupName;
-    a.description = QString("Aggiunto IP %1 a %2").arg(ipAddress, groupName);
+    a.description = QString("Added IP %1 to %2").arg(cleanIp, groupName);
 
     m_changesBuffer->addAction(a);
-    m_itemModel->addIpLocally(ipAddress.trimmed());
+    m_itemModel->addIpLocally(cleanIp);
 }
 
+// Stages a group deletion and cleans up related pending actions
 void ClientController::removeGroupRequest(const QString &groupName) {
     if (groupName.isEmpty()) return;
 
@@ -122,24 +136,32 @@ void ClientController::removeGroupRequest(const QString &groupName) {
     VpnAction a;
     a.type = VpnAction::DeleteGroup;
     a.targetId = groupName;
-    a.description = "Eliminazione gruppo: " + groupName;
+    a.description = "Delete group: " + groupName;
     m_changesBuffer->addAction(a);
     m_groupModel->setGroupHidden(groupName, true);
 }
 
+// Validates new name availability and stages a group rename
 void ClientController::renameGroupRequest(const QString &oldName, const QString &newName) {
     if (oldName == newName || newName.trimmed().isEmpty()) return;
+
+    QString cleanNew = newName.trimmed();
+    if (m_groupModel->duplicateNameExists(cleanNew)) {
+        emit errorsOccurred("A group named '" + cleanNew + "' already exists!");
+        return;
+    }
 
     VpnAction a;
     a.type = VpnAction::RenameGroup;
     a.targetId = oldName;
-    a.newValue = newName.trimmed();
-    a.description = QString("Rinominato %1 -> %2").arg(oldName, newName);
+    a.newValue = cleanNew;
+    a.description = QString("Renamed %1 -> %2").arg(oldName, cleanNew);
 
     m_changesBuffer->addAction(a);
-    m_groupModel->updateGroupNameLocally(oldName, newName.trimmed());
+    m_groupModel->updateGroupNameLocally(oldName, cleanNew);
 }
 
+// Stages an IP deletion from a specific group
 void ClientController::requestRemoveIp(const QString &groupName, const QString &ipAddress) {
     if (groupName.isEmpty() || ipAddress.isEmpty()) return;
 
@@ -147,54 +169,35 @@ void ClientController::requestRemoveIp(const QString &groupName, const QString &
     a.type = VpnAction::DeleteIp;
     a.targetId = ipAddress;
     a.groupId = groupName;
-    a.description = QString("Rimosso IP %1 da %2").arg(ipAddress, groupName);
+    a.description = QString("Removed IP %1 from %2").arg(ipAddress, groupName);
 
     m_itemModel->setItemHidden(ipAddress, true);
     m_changesBuffer->addAction(a);
-    qDebug() << "❌ IP Nascosto e azione aggiunta:" << ipAddress << "nel gruppo" << groupName;
 }
 
+// Validates and stages an IP address modification
 void ClientController::updateIpRequest(const QString &oldIp, const QString &newIp) {
     if (oldIp == newIp || newIp.trimmed().isEmpty()) return;
 
     QString cleanNewIp = newIp.trimmed();
 
-    // --- GUARDIANO PER LA MODIFICA ---
-    // Controlliamo se il NUOVO IP esiste già, escludendo quello VECCHIO
     if (m_itemModel->ipExistsInCurrentGroup(cleanNewIp, oldIp)) {
-        qWarning() << "⛔ Modifica bloccata: l'IP target esiste già:" << cleanNewIp;
-
-        // Mostra lo stesso PopupToast degli altri errori
-        emit errorsOccurred("Impossibile modificare: l'indirizzo " + cleanNewIp + " è già presente!");
-
-        return; // Blocca la rinomina
+        emit errorsOccurred("Cannot modify: address " + cleanNewIp + " is already present!");
+        return;
     }
 
     VpnAction a;
     a.type = VpnAction::UpdateIp;
     a.targetId = oldIp;
-    a.newValue = newIp.trimmed();
+    a.newValue = cleanNewIp;
     a.groupId = m_itemModel->currentGroupName();
-    a.description = QString("Cambiato IP: %1 -> %2").arg(oldIp, newIp);
+    a.description = QString("Changed IP: %1 -> %2").arg(oldIp, cleanNewIp);
 
     m_changesBuffer->addAction(a);
-    m_itemModel->renameIpLocally(oldIp, newIp.trimmed());
+    m_itemModel->renameIpLocally(oldIp, cleanNewIp);
 }
 
-void ClientController::selectGroupFromProxy(int proxyRow) {
-    if (!m_groupProxy || proxyRow < 0) return;
-
-    QModelIndex proxyIndex = m_groupProxy->index(proxyRow, 0);
-
-    QModelIndex sourceIndex = m_groupProxy->mapToSource(proxyIndex);
-
-    m_itemModel->setGroupIndex(sourceIndex.row());
-
-    qDebug() << "Mappato proxy row" << proxyRow << "a source row" << sourceIndex.row();
-}
-
-// --- SYNC E DISCARD ---
-
+// Serializes staged actions into JSON and sends them to the server
 void ClientController::commitSync() {
     auto actions = m_changesBuffer->buffer();
     if (actions.isEmpty()) return;
@@ -215,9 +218,8 @@ void ClientController::commitSync() {
     }
     root["changes"] = changes;
 
-    // Debugging del pacchetto in uscita
     QJsonDocument doc(root);
-    qDebug().noquote() << "📤 INVIO BULK SYNC:\n" << doc.toJson(QJsonDocument::Indented);
+    qDebug().noquote() << "SENDING BULK SYNC:\n" << doc.toJson(QJsonDocument::Indented);
 
     if (auto s = AdvVpnSocket::instance()) {
         s->sendJson(root);
@@ -226,11 +228,11 @@ void ClientController::commitSync() {
     }
 }
 
+// Clears the buffer and requests a full state refresh from the server
 void ClientController::discardChanges() {
     m_changesBuffer->clear();
     emit pendingChangesCountChanged();
 
-    // Ricarichiamo tutto dal server per annullare le modifiche locali "non committate"
     if (auto socket = AdvVpnSocket::instance()) {
         QJsonObject req;
         req["type"] = "FETCH_FULL_STATE";
@@ -238,6 +240,17 @@ void ClientController::discardChanges() {
     }
 }
 
+// Maps proxy view row index to source model index for group selection
+void ClientController::selectGroupFromProxy(int proxyRow) {
+    if (!m_groupProxy || proxyRow < 0) return;
+
+    QModelIndex proxyIndex = m_groupProxy->index(proxyRow, 0);
+    QModelIndex sourceIndex = m_groupProxy->mapToSource(proxyIndex);
+
+    m_itemModel->setGroupIndex(sourceIndex.row());
+}
+
+// Clears conflict messages for the UI
 void ClientController::clearConflicts() {
     if (!m_conflictMessages.isEmpty()) {
         m_conflictMessages.clear();
@@ -245,8 +258,7 @@ void ClientController::clearConflicts() {
     }
 }
 
-// --- HELPERS E CALLBACKS ---
-
+// Converts internal action enum to server-compliant string operation
 QString ClientController::actionTypeToString(VpnAction::Type type) {
     switch(type) {
     case VpnAction::CreateGroup: return "ADD_GROUP";
@@ -260,6 +272,7 @@ QString ClientController::actionTypeToString(VpnAction::Type type) {
     }
 }
 
+// Processes incoming JSON data from server to update local models and suggestions
 void ClientController::onSyncDataReceived(const QJsonObject &data) {
     if (data.contains("errors") || data.contains("conflicts")) {
         QStringList newErrors;
@@ -271,14 +284,12 @@ void ClientController::onSyncDataReceived(const QJsonObject &data) {
 
         if (!newErrors.isEmpty()) {
             m_conflictMessages = newErrors;
-            qDebug() << "📢 CONTROLLER: Conflitti rilevati!" << m_conflictMessages;
-            emit conflictMessagesChanged(); // Notifica il QML di mostrare il ConflictDialog
-            return; // Blocca l'aggiornamento dei modelli se i dati sono invalidi
+            emit conflictMessagesChanged();
+            return;
         }
     }
     int currentIndex = m_itemModel->currentGroupIndex();
 
-    // Aggiornamento Gruppi
     QJsonArray groupsArr = data["groups"].toArray();
     QList<AdvVpnGroup*> newGroups;
     for(const auto &val : groupsArr) {
@@ -291,7 +302,6 @@ void ClientController::onSyncDataReceived(const QJsonObject &data) {
         m_itemModel->setGroupIndex(currentIndex);
     }
 
-    // Aggiornamento Mappatura CN/ID
     QJsonArray cnsArr = data["cns"].toArray();
     QHash<QString, QString> serverCnMap;
     QStringList serverCnsList;
@@ -312,7 +322,6 @@ void ClientController::onSyncDataReceived(const QJsonObject &data) {
     m_itemModel->setIpToCn(serverCnMap);
     QStringList filteredCns;
     for(const QString &cn : serverCnsList) {
-        // Aggiunge ai suggerimenti solo se l'ID non è associato ad alcun IP
         if (m_itemModel->getIpForCn(cn).isEmpty()) {
             filteredCns.append(cn);
         }
@@ -321,17 +330,13 @@ void ClientController::onSyncDataReceived(const QJsonObject &data) {
     filteredCns.sort();
     m_availableCns = filteredCns;
     emit availableCnsChanged();
-    qInfo() << "Database sincronizzato con successo dal server.";
+    qInfo() << "Database successfully synchronized from server.";
 }
 
-void ClientController::setupBufferConnections() {
-    connect(m_changesBuffer, &ChangesBufferManager::countChanged, this, &ClientController::pendingChangesCountChanged);
-    connect(m_changesBuffer, &ChangesBufferManager::actionUndone, this, &ClientController::rollbackAction);
-}
-
+// Reverts local UI state when an action is undone in the buffer
 void ClientController::rollbackAction(const VpnAction &a)
 {
-    qDebug() << "🔄 Rollback (Visuale) per azione:" << a.description;
+    qDebug() << "Rollback (Visual) for action:" << a.description;
 
     switch(a.type) {
     case VpnAction::DeleteGroup:

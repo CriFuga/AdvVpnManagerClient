@@ -1,5 +1,6 @@
 #include "changesbuffermodel.h"
 
+// Constructor: links the model to the manager and connects the update signal
 ChangesBufferModel::ChangesBufferModel(ChangesBufferManager *manager, QObject *parent)
     : QAbstractListModel(parent)
     , m_manager(manager)
@@ -9,12 +10,14 @@ ChangesBufferModel::ChangesBufferModel(ChangesBufferManager *manager, QObject *p
     }
 }
 
+// Returns the total number of actions currently staged in the buffer manager
 int ChangesBufferModel::rowCount(const QModelIndex &parent) const
 {
     if (parent.isValid() || !m_manager) return 0;
     return m_manager->count();
 }
 
+// Provides data to the QML view for each role based on the current action index
 QVariant ChangesBufferModel::data(const QModelIndex &index, int role) const
 {
     if (!index.isValid() || !m_manager) return QVariant();
@@ -26,7 +29,7 @@ QVariant ChangesBufferModel::data(const QModelIndex &index, int role) const
 
     switch (role) {
     case TypeRole:
-        return action.type; // Restituisce l'enum (0-6)
+        return action.type;
     case TargetIdRole:
         return action.targetId;
     case DescriptionRole:
@@ -34,7 +37,6 @@ QVariant ChangesBufferModel::data(const QModelIndex &index, int role) const
     case GroupIdRole:
         return action.groupId;
     case IsGroupActionRole:
-        // Utile nel QML per dare uno stile diverso se è un'azione su un Gruppo
         return (action.type == VpnAction::CreateGroup ||
                 action.type == VpnAction::DeleteGroup ||
                 action.type == VpnAction::RenameGroup);
@@ -43,6 +45,7 @@ QVariant ChangesBufferModel::data(const QModelIndex &index, int role) const
     }
 }
 
+// Maps internal model roles to string property names accessible within QML
 QHash<int, QByteArray> ChangesBufferModel::roleNames() const
 {
     QHash<int, QByteArray> roles;
@@ -54,6 +57,7 @@ QHash<int, QByteArray> ChangesBufferModel::roleNames() const
     return roles;
 }
 
+// Invokes the undo operation for a specific action index through the manager
 void ChangesBufferModel::undo(int index)
 {
     if (m_manager) {
@@ -61,10 +65,9 @@ void ChangesBufferModel::undo(int index)
     }
 }
 
+// Notifies the view that the underlying buffer data has changed and requires a full refresh
 void ChangesBufferModel::updateFullBuffer()
 {
-    // Usiamo layoutChanged per notificare alla ListView di QML di rinfrescare l'intera lista
-    // Se volessimo animazioni chirurgiche useremmo beginInsertRows/beginRemoveRows
     emit layoutAboutToBeChanged();
     emit layoutChanged();
 }
